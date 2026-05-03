@@ -5,7 +5,7 @@ Fetches repository context from GitHub REST API
 import httpx
 import re
 from typing import Optional
-from config import Config
+from backend.config import Config
 import structlog
 
 logger = structlog.get_logger()
@@ -362,5 +362,9 @@ async def build_repo_context(github_url: str) -> dict:
     except Exception as e:
         logger.error("unexpected_error", error=str(e))
         raise GitHubParserError(f"Unexpected error: {str(e)}")
+
+# Aliases for backward compatibility with routers
+fetch_repo_context = build_repo_context
+GitHubError = GitHubParserError
 
 # Made with Bob

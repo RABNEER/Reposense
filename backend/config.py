@@ -21,6 +21,9 @@ class Config:
     # IBM Bob API Configuration
     IBM_BOB_API_KEY: str = os.getenv("IBM_BOB_API_KEY", "")
     IBM_BOB_BASE_URL: str = os.getenv("IBM_BOB_BASE_URL", "https://api.ibm.com/bob/v1")
+    IBM_BOB_API_URL: str = os.getenv("IBM_BOB_API_URL", os.getenv("IBM_BOB_BASE_URL", "https://api.ibm.com/bob/v1"))
+    IBM_BOB_TIMEOUT: float = float(os.getenv("IBM_BOB_TIMEOUT", "60"))
+    IBM_BOB_MAX_RETRIES: int = int(os.getenv("IBM_BOB_MAX_RETRIES", "3"))
     
     # GitHub API Configuration
     GITHUB_TOKEN: Optional[str] = os.getenv("GITHUB_TOKEN")
@@ -34,6 +37,10 @@ class Config:
         "ALLOWED_ORIGINS", 
         "http://localhost:3000,http://localhost:5173"
     ).split(",")
+    CORS_ORIGINS: list[str] = ALLOWED_ORIGINS
+    
+    # Environment
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     
     # Logging Configuration
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "info").upper()
