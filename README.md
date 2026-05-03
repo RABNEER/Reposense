@@ -56,7 +56,6 @@ RepoSense leverages **all IBM Bob modes** for comprehensive analysis:
 - React 18 with Hooks
 - Tailwind CSS for styling
 - Vite for build tooling
-- jsPDF for PDF export
 
 **Backend:**
 - Python 3.11+
@@ -141,7 +140,7 @@ Mock mode returns realistic sample data for `expressjs/express` repository.
    - Overview tab: Architecture, key files, onboarding steps
    - Coding tab: Bob finds an issue and writes the fix
    - Chat tab: Ask Bob questions about the code
-5. **Export** as Markdown or PDF
+5. **Export** as Markdown
 
 ### Example Repositories to Try
 
@@ -351,7 +350,8 @@ MIT License - see LICENSE file for details
 
 ## 👥 Team
 
-Built for the **IBM Bob Hackathon**
+- **Ranveer Kumar** | Team Apocalypto
+- Built for the **IBM Bob Hackathon**
 
 ## 🙏 Acknowledgments
 
