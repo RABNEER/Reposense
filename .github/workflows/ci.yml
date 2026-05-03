@@ -104,6 +104,8 @@ jobs:
       uses: docker/build-push-action@v4
       with:
         context: ./frontend
+        build-args: |
+          VITE_API_URL=http://localhost:8000
         push: false
         tags: reposense-frontend:test
 

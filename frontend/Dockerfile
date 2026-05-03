@@ -1,38 +1,27 @@
-# RepoSense Frontend Dockerfile
+# Stage 1: Build the React application
 FROM node:18-alpine AS builder
 
-# Set working directory
+LABEL maintainer="bob-hackathon-team"
+
 WORKDIR /app
 
-# Copy package files
+# Copy package.json and package-lock.json
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm install
 
-# Copy source code
+# Copy the rest of the application source code
 COPY . .
 
-# Build application
+# Build the application, accepting build arguments
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+ENV NODE_ENV=development
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
-
-# Copy built assets from builder
+# Stage 2: Serve the application using Nginx
+FROM nginx:stable-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port
 EXPOSE 80
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
-
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
-
-# Made with Bob
