@@ -5,7 +5,10 @@ Fetches repository context from GitHub REST API
 import httpx
 import re
 from typing import Optional
-from backend.config import Config
+try:
+    from backend.config import Config
+except ImportError:
+    from config import Config
 import structlog
 
 logger = structlog.get_logger()

@@ -10,7 +10,10 @@ from typing import Optional, Any
 import httpx
 import structlog
 
-from backend.config import Config
+try:
+    from backend.config import Config
+except ImportError:
+    from config import Config
 
 logger = structlog.get_logger()
 

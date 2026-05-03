@@ -8,8 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import structlog
 
-from backend.config import Config
-from backend.routers import analyze, ask, task, export
+try:
+    from backend.config import Config
+    from backend.routers import analyze, ask, task, export
+except ImportError:
+    from config import Config
+    from routers import analyze, ask, task, export
 
 # Configure structured logging
 structlog.configure(

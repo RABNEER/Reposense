@@ -16,11 +16,18 @@ from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 import asyncio
 
-from backend.github_parser import build_repo_context, GitHubParserError
-from backend.bob_client import (
-    analyze, ask, orchestrate, generate_doc,
-    BobAPIError, BobParseError, MOCK_MODE
-)
+try:
+    from backend.github_parser import build_repo_context, GitHubParserError
+    from backend.bob_client import (
+        analyze, ask, orchestrate, generate_doc,
+        BobAPIError, BobParseError, MOCK_MODE
+    )
+except ImportError:
+    from github_parser import build_repo_context, GitHubParserError
+    from bob_client import (
+        analyze, ask, orchestrate, generate_doc,
+        BobAPIError, BobParseError, MOCK_MODE
+    )
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
