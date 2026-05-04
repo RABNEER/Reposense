@@ -1,4 +1,5 @@
 import os
+import asyncio
 import httpx
 import json
 import re
@@ -11,7 +12,7 @@ load_dotenv(dotenv_path=env_path)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-2.0-flash"
 logger = logging.getLogger(__name__)
 
 
@@ -42,118 +43,165 @@ class GeminiClient:
 
         return slim
 
-    async def _call(self, prompt: str, system: str = None) -> str:
+    async def _call(self, prompt: str, system: str = None,
+                    max_retries: int = 3) -> str:
         if not self.api_key:
             raise Exception("GEMINI_API_KEY not set")
 
-        full_prompt = prompt + "\n\nIMPORTANT: Respond with valid JSON only. No markdown fences. No explanation. Just the JSON object."
-
-        messages = []
+        full_prompt = prompt + "\n\nIMPORTANT: Respond with valid JSON only. No markdown. No explanation. Just the JSON object."
         if system:
-            messages.append({
-                "role": "user",
-                "parts": [{"text": f"System: {system}\n\n{full_prompt}"}]
-            })
+            content = f"System: {system}\n\n{full_prompt}"
         else:
-            messages.append({
-                "role": "user",
-                "parts": [{"text": full_prompt}]
-            })
+            content = full_prompt
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(
-                f"{GEMINI_BASE_URL}/models/{GEMINI_MODEL}:generateContent",
-                params={"key": self.api_key},
-                json={
-                    "contents": messages,
-                    "generationConfig": {
-                        "temperature": 0.1,
-                        "maxOutputTokens": 8192
-                    }
-                }
-            )
+        last_error = None
 
-            if response.status_code != 200:
-                raise Exception(f"Gemini API error: {response.text}")
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    response = await client.post(
+                        f"{GEMINI_BASE_URL}/models/{GEMINI_MODEL}:generateContent",
+                        params={"key": self.api_key},
+                        json={
+                            "contents": [
+                                {"parts": [{"text": content}]}
+                            ],
+                            "generationConfig": {
+                                "temperature": 0.1,
+                                "maxOutputTokens": 8192
+                            }
+                        }
+                    )
 
-            data = response.json()
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
-            logger.info(f"Gemini raw response (first 300 chars): {text[:300]}")
-            return text
+                    if response.status_code == 429:
+                        wait = (attempt + 1) * 15
+                        logger.warning(
+                            f"Gemini rate limit. Retry {attempt+1}/{max_retries} "
+                            f"after {wait}s"
+                        )
+                        await asyncio.sleep(wait)
+                        last_error = "Rate limit exceeded"
+                        continue
+
+                    if response.status_code == 503:
+                        wait = (attempt + 1) * 10
+                        logger.warning(f"Gemini unavailable. Retry after {wait}s")
+                        await asyncio.sleep(wait)
+                        last_error = "Service unavailable"
+                        continue
+
+                    if response.status_code != 200:
+                        raise Exception(
+                            f"Gemini error {response.status_code}: "
+                            f"{response.text[:200]}"
+                        )
+
+                    data = response.json()
+                    text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    logger.info(f"Gemini success (attempt {attempt+1}): "
+                                f"{text[:100]}")
+                    return text
+
+            except Exception as e:
+                if "429" in str(e) or "rate" in str(e).lower():
+                    wait = (attempt + 1) * 15
+                    await asyncio.sleep(wait)
+                    last_error = str(e)
+                    continue
+                raise
+
+        raise Exception(f"Gemini failed after {max_retries} attempts: {last_error}")
 
     def parse_json_response(self, raw: str) -> dict:
         import re
         import json
-        
+
         if not raw:
             raise Exception("Empty response from Gemini")
-        
+
         cleaned = raw.strip()
 
-        # Remove markdown fences if present
+        # Remove markdown fences
         cleaned = re.sub(r'^```json\s*\n?', '', cleaned)
         cleaned = re.sub(r'^```\s*\n?', '', cleaned)
         cleaned = re.sub(r'\n?```\s*$', '', cleaned)
         cleaned = cleaned.strip()
 
-        # Try direct parse
+        # Try direct parse first
         try:
             result = json.loads(cleaned)
-            # If result is a string (double-encoded JSON), parse again
             if isinstance(result, str):
                 result = json.loads(result)
-            # Must be a dict
             if isinstance(result, dict):
                 return result
-            # If it's a list, wrap it
             if isinstance(result, list):
                 return {"items": result}
         except json.JSONDecodeError:
             pass
 
-        # Try to extract JSON object from text
+        # Find JSON object anywhere in the text
+        # Handles: "Here is my answer: {...} let me explain"
         try:
-            start = cleaned.index('{')
-            # Find matching closing brace
-            depth = 0
-            end = start
-            for i, char in enumerate(cleaned[start:], start):
-                if char == '{':
-                    depth += 1
-                elif char == '}':
-                    depth -= 1
-                    if depth == 0:
-                        end = i + 1
-                        break
-            
-            candidate = cleaned[start:end]
-            result = json.loads(candidate)
-            if isinstance(result, dict):
-                return result
-        except (ValueError, json.JSONDecodeError):
+            # Find all { positions
+            for match in re.finditer(r'\{', cleaned):
+                start = match.start()
+                depth = 0
+                end = start
+                in_string = False
+                escape_next = False
+
+                for i, char in enumerate(cleaned[start:], start):
+                    if escape_next:
+                        escape_next = False
+                        continue
+                    if char == '\\' and in_string:
+                        escape_next = True
+                        continue
+                    if char == '"':
+                        in_string = not in_string
+                        continue
+                    if in_string:
+                        continue
+                    if char == '{':
+                        depth += 1
+                    elif char == '}':
+                        depth -= 1
+                        if depth == 0:
+                            end = i + 1
+                            break
+
+                if end > start:
+                    candidate = cleaned[start:end]
+                    try:
+                        result = json.loads(candidate)
+                        if isinstance(result, dict) and len(result) > 0:
+                            return result
+                    except json.JSONDecodeError:
+                        continue
+        except Exception:
             pass
 
-        # Last resort: try to fix truncated JSON
+        # Last resort: fix truncated JSON
         try:
             start = cleaned.index('{')
             candidate = cleaned[start:]
-            open_braces = candidate.count('{') - candidate.count('}')
-            open_brackets = candidate.count('[') - candidate.count(']')
-            # Close open strings first
+            # Fix unclosed strings
             if candidate.count('"') % 2 != 0:
                 candidate += '"'
+            # Close structures
+            open_brackets = candidate.count('[') - candidate.count(']')
+            open_braces = candidate.count('{') - candidate.count('}')
             candidate += ']' * max(0, open_brackets)
             candidate += '}' * max(0, open_braces)
             result = json.loads(candidate)
             if isinstance(result, dict):
                 return result
-        except (ValueError, json.JSONDecodeError):
+        except Exception:
             pass
-        
+
         raise Exception(
-            f"Cannot parse Gemini response as dict. "
-            f"Got: {type(cleaned).__name__}. "
-            f"Content: {cleaned[:200]}"
+            f"Cannot parse JSON from Gemini response. "
+            f"First 300 chars: {cleaned[:300]}"
         )
 
     async def analyze(self, repo_context: dict) -> dict:

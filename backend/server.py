@@ -228,13 +228,10 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
     try:
         logger.info(f"Analyzing repository: {payload.github_url}")
         config = get_request_config(http_request)
-
-        # Read config from headers (user's settings panel)
-        gemini_key = http_request.headers.get('X-Gemini-Key', '')
-        bob_key = http_request.headers.get('X-IBM-Bob-Key', '') or \
-                  os.getenv('IBM_BOB_API_KEY', 'mock')
-        provider = http_request.headers.get('X-AI-Provider', 'bob')
-        mock_header = http_request.headers.get('X-Mock-Mode', 'true')
+        gemini_key = config["gemini_key"]
+        bob_key = config["bob_key"]
+        provider = config["provider"]
+        mock_header = config["mock"]
 
         # Determine if mock mode
         use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
@@ -300,13 +297,10 @@ async def ask_question(payload: AskRequest, http_request: Request):
     try:
         logger.info(f"Question for {payload.github_url}: {payload.question[:50]}...")
         config = get_request_config(http_request)
-
-        # Read config from headers (user's settings panel)
-        gemini_key = http_request.headers.get('X-Gemini-Key', '')
-        bob_key = http_request.headers.get('X-IBM-Bob-Key', '') or \
-                  os.getenv('IBM_BOB_API_KEY', 'mock')
-        provider = http_request.headers.get('X-AI-Provider', 'bob')
-        mock_header = http_request.headers.get('X-Mock-Mode', 'true')
+        gemini_key = config["gemini_key"]
+        bob_key = config["bob_key"]
+        provider = config["provider"]
+        mock_header = config["mock"]
 
         # Determine if mock mode
         use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
@@ -363,13 +357,10 @@ async def kickstart_task(payload: TaskRequest, http_request: Request):
     try:
         logger.info(f"Starting orchestration for {payload.github_url}")
         config = get_request_config(http_request)
-
-        # Read config from headers (user's settings panel)
-        gemini_key = http_request.headers.get('X-Gemini-Key', '')
-        bob_key = http_request.headers.get('X-IBM-Bob-Key', '') or \
-                  os.getenv('IBM_BOB_API_KEY', 'mock')
-        provider = http_request.headers.get('X-AI-Provider', 'bob')
-        mock_header = http_request.headers.get('X-Mock-Mode', 'true')
+        gemini_key = config["gemini_key"]
+        bob_key = config["bob_key"]
+        provider = config["provider"]
+        mock_header = config["mock"]
 
         # Determine if mock mode
         use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
@@ -428,13 +419,10 @@ async def export_markdown(payload: ExportRequest, http_request: Request):
     try:
         logger.info(f"Generating markdown export for {payload.github_url}")
         config = get_request_config(http_request)
-
-        # Read config from headers (user's settings panel)
-        gemini_key = http_request.headers.get('X-Gemini-Key', '')
-        bob_key = http_request.headers.get('X-IBM-Bob-Key', '') or \
-                  os.getenv('IBM_BOB_API_KEY', 'mock')
-        provider = http_request.headers.get('X-AI-Provider', 'bob')
-        mock_header = http_request.headers.get('X-Mock-Mode', 'true')
+        gemini_key = config["gemini_key"]
+        bob_key = config["bob_key"]
+        provider = config["provider"]
+        mock_header = config["mock"]
 
         # Determine if mock mode
         use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')

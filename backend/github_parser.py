@@ -1,8 +1,7 @@
-import re
 import httpx
 import time
 import logging
-from typing import Optional, Tuple, Dict, List
+from typing import Optional, Dict, List
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -11,39 +10,50 @@ class GitHubParserError(Exception):
     """Custom exception for GitHub parsing errors"""
     pass
 
-def parse_github_url(url: str) -> Tuple[str, str]:
-    """
-    Parse GitHub URL and extract owner and repo name.
-    
-    Handles formats:
-    - https://github.com/owner/repo
-    - github.com/owner/repo
-    - owner/repo
-    - ...
-    """
-    if not url or not isinstance(url, str):
-        raise ValueError("GitHub URL is required")
-    
-    url = url.strip().lower()
-    
-    # Pattern for full GitHub URLs
-    full_pattern = r'(?:github\.com/|github:)([^/]+)/([^/.]+)(?:\.git|/tree/|/blob/|/|$)'
-    match = re.search(full_pattern, url)
-    
-    if match:
-        owner = match.group(1)
-        repo = match.group(2)
-        return owner, repo
-        
-    # Pattern for owner/repo format
-    short_pattern = r'^([^/]+)/([^/.]+)$'
-    match = re.match(short_pattern, url)
-    if match:
-        owner = match.group(1)
-        repo = match.group(2)
-        return owner, repo
-    
-    raise ValueError("Invalid repository format. Use owner/repo or a full GitHub URL.")
+def parse_github_url(url: str) -> tuple[str, str]:
+    if not url:
+        raise ValueError("URL cannot be empty")
+
+    cleaned = url.strip()
+
+    # Add https if missing
+    if not cleaned.startswith('http'):
+        cleaned = 'https://' + cleaned
+
+    # Remove .git suffix
+    cleaned = cleaned.rstrip('/')
+    if cleaned.endswith('.git'):
+        cleaned = cleaned[:-4]
+
+    # Strip tree/blob paths
+    for pattern in ['/tree/', '/blob/', '/commit/', '/releases/']:
+        if pattern in cleaned:
+            cleaned = cleaned.split(pattern)[0]
+
+    # Extract github.com part
+    if 'github.com' not in cleaned:
+        raise ValueError("Not a GitHub URL")
+
+    parts = cleaned.split('github.com/')
+    if len(parts) < 2:
+        raise ValueError("Invalid GitHub URL format")
+
+    path = parts[1].strip('/')
+    segments = path.split('/')
+
+    if len(segments) < 2:
+        raise ValueError(
+            "URL must include owner and repo: "
+            "github.com/owner/repo"
+        )
+
+    owner = segments[0]
+    repo = segments[1]
+
+    if not owner or not repo:
+        raise ValueError("Owner and repo name cannot be empty")
+
+    return owner, repo
 
 def fetch_repo_metadata(owner: str, repo: str, token: Optional[str] = None) -> Dict:
     """

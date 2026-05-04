@@ -34,7 +34,8 @@ const App = () => {
   const [ibmBobBaseUrl, setIbmBobBaseUrl] = useState(() => readStoredConfig('ibm_bob_base_url', 'https://bob.ibm.com'));
   const [geminiKey, setGeminiKey] = useState(() => readStoredConfig('gemini_key'));
   const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
-  const [mockMode, setMockMode] = useState(() => readStoredConfig('mock_mode', 'true'));
+  const [mockModeToggle, setMockModeToggle] = useState(() => readStoredConfig('mock_mode', 'true') === 'true');
+  const [mockModeManualOverride, setMockModeManualOverride] = useState(false);
 
   const chatEndRef = useRef(null);
   const startTimeRef = useRef(null);
@@ -119,6 +120,27 @@ const App = () => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [appState]);
+
+  useEffect(() => {
+    if (settingsOpen) {
+      setAiProvider(localStorage.getItem('ai_provider') || 'bob');
+      setIbmBobKey(localStorage.getItem('ibm_bob_key') || '');
+      setIbmBobBaseUrl(localStorage.getItem('ibm_bob_base_url') || 'https://bob.ibm.com');
+      setGeminiKey(localStorage.getItem('gemini_key') || '');
+      setGithubToken(localStorage.getItem('github_token') || '');
+      const stored = localStorage.getItem('mock_mode');
+      setMockModeToggle(stored !== null ? stored === 'true' : true);
+      setMockModeManualOverride(false);
+    }
+  }, [settingsOpen]);
+
+  useEffect(() => {
+    if (!settingsOpen || mockModeManualOverride) return;
+    const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
+    const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
+    const hasAnyKey = hasGeminiKey || hasBobKey;
+    setMockModeToggle(!hasAnyKey);
+  }, [settingsOpen, geminiKey, ibmBobKey, mockModeManualOverride]);
 
   // ─── HANDLERS ───
   const normalizeGithubUrl = (value) => {
@@ -217,13 +239,30 @@ const App = () => {
     }
   };
 
-  const handleSaveConfiguration = () => {
+  const handleSaveSettings = () => {
+    localStorage.setItem('ai_provider', aiProvider);
     localStorage.setItem('ibm_bob_key', ibmBobKey.trim());
     localStorage.setItem('ibm_bob_base_url', ibmBobBaseUrl.trim());
     localStorage.setItem('gemini_key', geminiKey.trim());
     localStorage.setItem('github_token', githubToken.trim());
-    localStorage.setItem('ai_provider', aiProvider);
-    localStorage.setItem('mock_mode', mockMode);
+
+    // CRITICAL FIX: Auto-set mock mode based on keys
+    const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
+    const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
+    const hasAnyKey = hasGeminiKey || hasBobKey;
+
+    if (hasAnyKey) {
+      localStorage.setItem('mock_mode', 'false');
+    } else {
+      localStorage.setItem('mock_mode', 'true');
+    }
+
+    if (mockModeManualOverride) {
+      localStorage.setItem('mock_mode', mockModeToggle ? 'true' : 'false');
+    }
+
+    const stored = localStorage.getItem('mock_mode');
+    setMockModeToggle(stored === 'true');
     setSettingsOpen(false);
   };
 
@@ -257,7 +296,7 @@ const App = () => {
     ? analysis.bob_modes_used
     : ['Plan', 'Ask', 'Code', 'Orchestrator'];
   const hasCustomApi = Boolean(ibmBobKey.trim() || geminiKey.trim() || githubToken.trim());
-  const apiStatus = mockMode === 'true'
+  const apiStatus = mockModeToggle
     ? { label: '○ DEMO — Mock', color: 'var(--gold)' }
     : aiProvider === 'gemini'
       ? { label: '● LIVE — Gemini', color: '#2563eb' }
@@ -600,28 +639,31 @@ const App = () => {
         </section>
 
         <section className="mb-8">
-          <label className="label block mb-3">Mode</label>
+          <label className="label block mb-3">Mock Mode</label>
           <div className="grid grid-cols-2 border border-[var(--border)]">
             {[
-              { id: 'true', label: 'Mock Data' },
-              { id: 'false', label: 'Live API' }
+              { id: true, label: 'Use Mock Data' },
+              { id: false, label: 'Use Real AI' }
             ].map(option => (
               <button
                 key={option.id}
                 type="button"
-                onClick={() => setMockMode(option.id)}
-                className={`settings-option px-3 py-3 text-[11px] font-medium transition-base ${mockMode === option.id ? 'bg-[var(--ink)] text-[var(--paper)]' : 'bg-transparent text-[var(--muted)]'}`}
+                onClick={() => {
+                  setMockModeToggle(option.id);
+                  setMockModeManualOverride(true);
+                }}
+                className={`settings-option px-3 py-3 text-[11px] font-medium transition-base ${mockModeToggle === option.id ? 'bg-[var(--ink)] text-[var(--paper)]' : 'bg-transparent text-[var(--muted)]'}`}
               >
                 {option.label}
               </button>
             ))}
           </div>
-          <p className="settings-helper mt-2">Mock mode works without any API keys</p>
+          <p className="settings-helper mt-2">Auto-set from available API keys. You can override before saving.</p>
         </section>
 
         <button
           type="button"
-          onClick={handleSaveConfiguration}
+          onClick={handleSaveSettings}
           className="settings-save w-full border border-[var(--ink)] bg-transparent px-4 py-3 label font-semibold text-[var(--ink)] transition-base"
         >
           Save Configuration

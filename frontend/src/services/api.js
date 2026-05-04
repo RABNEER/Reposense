@@ -1,10 +1,11 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 function isMockMode() {
-  if (typeof window === 'undefined') return import.meta.env.VITE_MOCK_MODE === 'true';
+  const envVal = import.meta.env.VITE_MOCK_MODE;
+  if (typeof window === 'undefined') return envVal === 'true';
   const stored = localStorage.getItem('mock_mode');
   if (stored !== null) return stored === 'true';
-  return import.meta.env.VITE_MOCK_MODE === 'true';
+  return envVal === 'true';
 }
 
 function getStoredValue(key, fallback = '') {
@@ -15,7 +16,7 @@ function getStoredValue(key, fallback = '') {
 function getConfigHeaders() {
   const provider = localStorage.getItem('ai_provider') || 'bob';
   const mockMode = localStorage.getItem('mock_mode');
-  const envMockMode = import.meta.env.VITE_MOCK_MODE || 'true';
+  const envMockMode = import.meta.env.VITE_MOCK_MODE || 'false';
 
   return {
     'Content-Type': 'application/json',
