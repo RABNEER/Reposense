@@ -1,6 +1,7 @@
 import os
 import httpx
 import json
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -16,6 +17,28 @@ class GeminiClient:
     def __init__(self, api_key: str = None):
         self.api_key = api_key or GEMINI_API_KEY
         self.available = bool(self.api_key)
+
+    def _slim_context(self, repo_context: dict) -> dict:
+        slim = {
+            'repo_name': repo_context.get('repo_name', ''),
+            'owner': repo_context.get('owner', ''),
+            'metadata': {
+                'description': repo_context.get('metadata', {}).get('description', ''),
+                'language': repo_context.get('metadata', {}).get('language', ''),
+                'stars': repo_context.get('metadata', {}).get('stars', 0),
+                'topics': repo_context.get('metadata', {}).get('topics', [])
+            },
+            'file_tree': [f['path'] for f in
+                          repo_context.get('file_tree', [])[:60]],
+            'key_files': {}
+        }
+
+        for path, content in list(
+            repo_context.get('key_files', {}).items()
+        )[:4]:
+            slim['key_files'][path] = content[:300]
+
+        return slim
 
     async def _call(self, prompt: str, system: str = None) -> str:
         if not self.api_key:
@@ -41,7 +64,8 @@ class GeminiClient:
                     "contents": messages,
                     "generationConfig": {
                         "temperature": 0.1,
-                        "maxOutputTokens": 4000
+                        "maxOutputTokens": 8192,
+                        "responseMimeType": "application/json"
                     }
                 }
             )
@@ -54,47 +78,78 @@ class GeminiClient:
 
     def parse_json_response(self, raw: str) -> dict:
         cleaned = raw.strip()
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        if cleaned.startswith("```"):
-            cleaned = cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        return json.loads(cleaned.strip())
+
+        # Remove markdown fences
+        cleaned = re.sub(r'^```json\s*\n?', '', cleaned)
+        cleaned = re.sub(r'^```\s*\n?', '', cleaned)
+        cleaned = re.sub(r'\n?```$', '', cleaned)
+        cleaned = cleaned.strip()
+
+        # Try direct parse
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+
+        # Try to find and fix truncated JSON
+        # Find last complete key-value pair
+        try:
+            # Find the outermost { }
+            start = cleaned.index('{')
+            # Try progressively shorter strings
+            for end in range(len(cleaned), start, -1):
+                try:
+                    candidate = cleaned[start:end]
+                    # Try to close any open structures
+                    open_braces = candidate.count('{') - candidate.count('}')
+                    open_brackets = candidate.count('[') - candidate.count(']')
+                    closed = candidate + ']' * open_brackets + '}' * open_braces
+                    result = json.loads(closed)
+                    return result
+                except json.JSONDecodeError:
+                    continue
+        except ValueError:
+            pass
+
+        raise Exception(f"Cannot parse JSON: {cleaned[:300]}")
 
     async def analyze(self, repo_context: dict) -> dict:
+        slim = self._slim_context(repo_context)
         try:
             from backend.prompts import build_analysis_prompt, SYSTEM_PROMPT
         except ImportError:
             from prompts import build_analysis_prompt, SYSTEM_PROMPT
-        prompt = build_analysis_prompt(repo_context)
+        prompt = build_analysis_prompt(slim)
         raw = await self._call(prompt, SYSTEM_PROMPT)
         return self.parse_json_response(raw)
 
     async def find_issue(self, repo_context: dict) -> dict:
+        slim = self._slim_context(repo_context)
         try:
             from backend.prompts import build_issue_prompt, SYSTEM_PROMPT
         except ImportError:
             from prompts import build_issue_prompt, SYSTEM_PROMPT
-        prompt = build_issue_prompt(repo_context)
+        prompt = build_issue_prompt(slim)
         raw = await self._call(prompt, SYSTEM_PROMPT)
         return self.parse_json_response(raw)
 
     async def plan_solution(self, repo_context: dict, issue: dict) -> dict:
+        slim = self._slim_context(repo_context)
         try:
             from backend.prompts import build_plan_prompt, SYSTEM_PROMPT
         except ImportError:
             from prompts import build_plan_prompt, SYSTEM_PROMPT
-        prompt = build_plan_prompt(repo_context, issue)
+        prompt = build_plan_prompt(slim, issue)
         raw = await self._call(prompt, SYSTEM_PROMPT)
         return self.parse_json_response(raw)
 
     async def generate_code(self, repo_context: dict, issue: dict, plan: dict) -> dict:
+        slim = self._slim_context(repo_context)
         try:
             from backend.prompts import build_code_prompt, SYSTEM_PROMPT
         except ImportError:
             from prompts import build_code_prompt, SYSTEM_PROMPT
-        prompt = build_code_prompt(repo_context, issue, plan)
+        prompt = build_code_prompt(slim, issue, plan)
         raw = await self._call(prompt, SYSTEM_PROMPT)
         return self.parse_json_response(raw)
 
@@ -131,11 +186,12 @@ class GeminiClient:
         }
 
     async def ask(self, repo_context: dict, question: str, history: list) -> dict:
+        slim = self._slim_context(repo_context)
         try:
             from backend.prompts import build_qa_prompt, SYSTEM_PROMPT
         except ImportError:
             from prompts import build_qa_prompt, SYSTEM_PROMPT
-        prompt = build_qa_prompt(repo_context, question, history)
+        prompt = build_qa_prompt(slim, question, history)
         raw = await self._call(prompt, SYSTEM_PROMPT)
         result = self.parse_json_response(raw)
         return result
