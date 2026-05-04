@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeRepo, askQuestion, kickstartTask, exportMarkdown } from './services/api';
 
+const readStoredConfig = (key, fallback = '') => {
+  if (typeof window === 'undefined') return fallback;
+  return localStorage.getItem(key) || fallback;
+};
+
 const App = () => {
   // ─── STATE ───
   const [appState, setAppState] = useState('hero'); // 'hero' | 'loading' | 'results'
@@ -23,19 +28,16 @@ const App = () => {
   const [currentTip, setCurrentTip] = useState(0);
   const [checkedSteps, setCheckedSteps] = useState(new Set());
   const [activeMode, setActiveMode] = useState(-1);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aiProvider, setAiProvider] = useState(() => readStoredConfig('ai_provider', 'bob'));
+  const [ibmBobKey, setIbmBobKey] = useState(() => readStoredConfig('ibm_bob_key'));
+  const [ibmBobBaseUrl, setIbmBobBaseUrl] = useState(() => readStoredConfig('ibm_bob_base_url', 'https://bob.ibm.com'));
+  const [geminiKey, setGeminiKey] = useState(() => readStoredConfig('gemini_key'));
+  const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
+  const [mockMode, setMockMode] = useState(() => readStoredConfig('mock_mode', 'true'));
 
   const chatEndRef = useRef(null);
   const startTimeRef = useRef(null);
-
-  // ─── SETTINGS STATE ───
-  const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState({
-    provider: localStorage.getItem('rs_provider') || 'mock',
-    bobKey: localStorage.getItem('rs_bob_key') || '',
-    bobUrl: localStorage.getItem('rs_bob_url') || 'https://api.ibmbob.com',
-    geminiKey: localStorage.getItem('rs_gemini_key') || '',
-    githubToken: localStorage.getItem('rs_github_token') || '',
-  });
 
   // ─── CONSTANTS ───
   const steps = [
@@ -59,28 +61,7 @@ const App = () => {
     { name: "FastAPI", url: "https://github.com/tiangolo/fastapi" }
   ];
 
-  // ─── HELPERS ───
-  const getRequestHeaders = () => {
-    const headers = {
-      'X-AI-Provider': settings.provider,
-      'X-Mock-Mode': settings.provider === 'mock' ? 'true' : 'false',
-    };
-    if (settings.bobKey) headers['X-IBM-Bob-Key'] = settings.bobKey;
-    if (settings.bobUrl) headers['X-IBM-Bob-Base-URL'] = settings.bobUrl;
-    if (settings.geminiKey) headers['X-Gemini-Key'] = settings.geminiKey;
-    if (settings.githubToken) headers['X-GitHub-Token'] = settings.githubToken;
-    return headers;
-  };
-
   // ─── EFFECTS ───
-  useEffect(() => {
-    localStorage.setItem('rs_provider', settings.provider);
-    localStorage.setItem('rs_bob_key', settings.bobKey);
-    localStorage.setItem('rs_bob_url', settings.bobUrl);
-    localStorage.setItem('rs_gemini_key', settings.geminiKey);
-    localStorage.setItem('rs_github_token', settings.githubToken);
-  }, [settings]);
-
   useEffect(() => {
     if (appState === 'loading') {
       const stepInterval = setInterval(() => {
@@ -92,7 +73,7 @@ const App = () => {
 
       const performAnalysis = async () => {
         try {
-          const data = await analyzeRepo(repoUrl, getRequestHeaders());
+          const data = await analyzeRepo(repoUrl);
           if (startTimeRef.current) {
             const elapsed = Math.round((Date.now() - startTimeRef.current) / 1000);
             setElapsedTime(`${elapsed}s`);
@@ -132,15 +113,12 @@ const App = () => {
       if (e.key === '1') setActiveTab('overview');
       if (e.key === '2') setActiveTab('coding');
       if (e.key === '3') setActiveTab('chat');
-      if (e.key === 'Escape') {
-        if (showSettings) setShowSettings(false);
-        else handleBack();
-      }
+      if (e.key === 'Escape') handleBack();
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [appState, showSettings]);
+  }, [appState]);
 
   // ─── HANDLERS ───
   const normalizeGithubUrl = (value) => {
@@ -214,7 +192,7 @@ const App = () => {
     setCodingLoading(true);
     setActiveTab('coding');
     try {
-      const data = await kickstartTask(repoUrl, getRequestHeaders());
+      const data = await kickstartTask(repoUrl);
       setCoding(data);
       // Mode chain animation
       for (let i = 0; i < 4; i++) {
@@ -231,12 +209,22 @@ const App = () => {
   const handleExport = async () => {
     try {
       setExporting(true);
-      await exportMarkdown(repoUrl, getRequestHeaders());
+      await exportMarkdown(repoUrl);
     } catch (err) {
       setApiError('Export failed: ' + err.message);
     } finally {
       setExporting(false);
     }
+  };
+
+  const handleSaveConfiguration = () => {
+    localStorage.setItem('ibm_bob_key', ibmBobKey.trim());
+    localStorage.setItem('ibm_bob_base_url', ibmBobBaseUrl.trim());
+    localStorage.setItem('gemini_key', geminiKey.trim());
+    localStorage.setItem('github_token', githubToken.trim());
+    localStorage.setItem('ai_provider', aiProvider);
+    localStorage.setItem('mock_mode', mockMode);
+    setSettingsOpen(false);
   };
 
   const handleSend = async (q = chatInput) => {
@@ -249,7 +237,7 @@ const App = () => {
     setIsTyping(true);
 
     try {
-      const response = await askQuestion(repoUrl, question, newMessages, getRequestHeaders());
+      const response = await askQuestion(repoUrl, question, newMessages);
       setChatMessages([...newMessages, { role: 'bob', content: response.answer }]);
     } catch (err) {
       setChatMessages([...newMessages, { role: 'bob', content: 'Encountered an error. Please try again.' }]);
@@ -268,6 +256,12 @@ const App = () => {
   const bobModesUsed = analysis?.bob_modes_used?.length
     ? analysis.bob_modes_used
     : ['Plan', 'Ask', 'Code', 'Orchestrator'];
+  const hasCustomApi = Boolean(ibmBobKey.trim() || geminiKey.trim() || githubToken.trim());
+  const apiStatus = mockMode === 'true'
+    ? { label: '○ DEMO — Mock', color: 'var(--gold)' }
+    : aiProvider === 'gemini'
+      ? { label: '● LIVE — Gemini', color: '#2563eb' }
+      : { label: '● LIVE — IBM Bob', color: 'var(--sage)' };
 
   // ─── STYLES ───
   const styles = `
@@ -331,73 +325,64 @@ const App = () => {
     input, textarea { cursor: text; }
     button:hover { background-color: var(--rust) !important; color: var(--paper) !important; }
     button.export-button:hover { background-color: var(--paper2) !important; color: var(--ink) !important; }
-    .card-grid { display: grid; background: var(--border); gap: 1px; border: 1px solid var(--border); }
-    .card { background: var(--paper); padding: 24px; width: 100%; }
-    
-    .settings-modal {
+    button.settings-button:hover,
+    button.settings-close:hover,
+    button.settings-option:hover,
+    button.settings-save:hover {
+      background-color: var(--paper2) !important;
+      color: var(--ink) !important;
+    }
+    button.settings-save:hover {
+      border-color: var(--ink) !important;
+    }
+    .settings-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 320px;
+      max-width: 100vw;
+      height: 100vh;
+      background: var(--paper);
+      border-left: 1px solid var(--border);
+      padding: 24px;
+      z-index: 200;
+      transform: translateX(100%);
+      transition: transform 180ms ease;
+      overflow-y: auto;
+    }
+    .settings-drawer.open { transform: translateX(0); }
+    .settings-overlay {
       position: fixed;
       inset: 0;
-      z-index: 200;
-      background: rgba(10, 10, 10, 0.4);
-      backdrop-blur: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
+      background: rgba(10, 10, 10, 0.12);
+      z-index: 190;
     }
-    
-    .settings-content {
-      background: var(--paper);
-      border: 1px solid var(--ink);
-      width: 100%;
-      max-width: 480px;
-      padding: 32px;
-      box-shadow: 20px 20px 0 var(--ink);
-    }
-    
     .settings-input {
       width: 100%;
       background: var(--paper2);
       border: 1px solid var(--border);
-      padding: 10px 14px;
-      font-size: 11px;
+      color: var(--ink);
       font-family: 'Geist Mono', monospace;
-      margin-top: 8px;
-      margin-bottom: 20px;
+      font-size: 11px;
+      padding: 10px 12px;
       outline: none;
     }
-    
     .settings-input:focus {
+      background: var(--paper);
       border-color: var(--gold);
-      background: var(--paper);
     }
-    
-    .provider-select {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      margin-bottom: 24px;
-      margin-top: 8px;
-    }
-    
-    .provider-btn {
-      padding: 12px;
-      background: var(--paper);
-      border: none;
-      font-size: 10px;
+    .settings-helper {
       font-family: 'Geist Mono', monospace;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      transition: all 0.2s;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.6;
     }
-    
-    .provider-btn.active {
-      background: var(--ink);
-      color: var(--paper);
+    .settings-link {
+      color: var(--rust);
+      text-decoration: underline;
     }
-
+    .card-grid { display: grid; background: var(--border); gap: 1px; border: 1px solid var(--border); }
+    .card { background: var(--paper); padding: 24px; width: 100%; }
     .bob-stats-card {
       width: 100%;
       background: var(--paper2);
@@ -466,6 +451,19 @@ const App = () => {
     .hero-h1-l1, .hero-h1-l2 { font-size: inherit; }
     .hero-h1-l3 { font-size: 0.7em; color: var(--muted); }
     .hero-h1 { line-height: 1.05; letter-spacing: 0; }
+
+    .step-number { font-size: 11px; font-weight: 500; color: var(--dim); }
+    .step-action { font-size: 13px; font-weight: 500; color: var(--ink); }
+    .step-why { font-size: 11px; font-weight: 400; color: var(--muted); }
+    .inline-code { 
+      font-size: 10px; 
+      font-weight: 500; 
+      color: var(--rust); 
+      background: var(--paper2); 
+      border: 1px solid var(--border); 
+      padding: 1px 4px; 
+      margin: 0 2px;
+    }
   `;
 
   // ─── SHARED COMPONENTS ───
@@ -475,22 +473,161 @@ const App = () => {
         <span className="font-serif text-[26px] text-[var(--ink)]">Repo</span>
         <span className="font-serif text-[26px] italic text-[var(--gold)]">Sense</span>
       </div>
-      <div className="flex items-center gap-4">
-        <div className="hidden sm:flex items-center gap-2 label border border-[var(--border)] px-[14px] py-[6px] leading-none text-[10px] text-[var(--ink)] font-medium">
-          <div className={`w-1.5 h-1.5 rounded-full ${settings.provider === 'mock' ? 'bg-amber-400' : 'bg-green-500'}`} />
-          {settings.provider === 'mock' ? 'Demo Mode' : `${settings.provider.toUpperCase()} LIVE`}
-        </div>
-        <button 
-          onClick={() => setShowSettings(true)}
-          className="p-2 hover:bg-[var(--paper2)] transition-base"
+      <div className="flex items-center gap-2">
+        <div
+          className="hidden sm:block label border border-[var(--border)] px-[10px] py-[6px] leading-none text-[9px] font-medium"
+          style={{ color: apiStatus.color }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
+          {apiStatus.label}
+        </div>
+        <div className="hidden md:block label border border-[var(--border)] px-[14px] py-[6px] leading-none text-[10px] text-[var(--ink)] font-medium">
+          Powered by IBM Bob
+        </div>
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="settings-button relative border border-[var(--border)] bg-transparent px-3 py-[6px] text-[11px] text-[var(--ink)] font-medium transition-base"
+          title={hasCustomApi ? '● Custom API' : '○ Default (Mock)'}
+        >
+          <span
+            className="inline-block w-[6px] h-[6px] mr-2 align-middle"
+            style={{ background: hasCustomApi ? 'var(--sage)' : 'var(--dim)' }}
+          />
+          ⚙ Settings
         </button>
       </div>
     </nav>
+  );
+
+  const SettingsPanel = () => (
+    <>
+      {settingsOpen && <div className="settings-overlay" onClick={() => setSettingsOpen(false)} />}
+      <aside className={`settings-drawer ${settingsOpen ? 'open' : ''}`}>
+        <div className="flex items-start justify-between mb-8">
+          <h2 className="font-serif text-[20px] text-[var(--ink)]">Configuration</h2>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(false)}
+            className="settings-close border border-[var(--border)] bg-transparent w-7 h-7 text-[18px] leading-none text-[var(--muted)]"
+          >
+            ×
+          </button>
+        </div>
+
+        <section className="mb-8">
+          <label className="label block mb-3">AI Provider</label>
+          <div className="flex gap-2 mb-5">
+            {[
+              { id: 'bob', label: 'IBM Bob' },
+              { id: 'gemini', label: 'Gemini' }
+            ].map(option => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setAiProvider(option.id)}
+                className={`settings-option flex-1 border px-3 py-2 text-[11px] font-medium transition-base ${aiProvider === option.id ? 'border-[var(--ink)] text-[var(--ink)] bg-[var(--paper2)]' : 'border-[var(--border)] text-[var(--muted)] bg-transparent'}`}
+              >
+                {aiProvider === option.id ? '●' : '○'} {option.label}
+              </button>
+            ))}
+          </div>
+
+          {aiProvider === 'bob' ? (
+            <div className="space-y-4">
+              <div>
+                <label className="label block mb-2">IBM Bob API Key</label>
+                <input
+                  type="password"
+                  className="settings-input"
+                  placeholder="bob_prod_xxx..."
+                  value={ibmBobKey}
+                  onChange={(e) => setIbmBobKey(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label block mb-2">IBM Bob Base URL</label>
+                <input
+                  type="text"
+                  className="settings-input"
+                  placeholder="https://bob.ibm.com"
+                  value={ibmBobBaseUrl}
+                  onChange={(e) => setIbmBobBaseUrl(e.target.value)}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className="label block mb-2">Gemini API Key</label>
+                <input
+                  type="password"
+                  className="settings-input"
+                  placeholder="AIzaSy..."
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
+                />
+              </div>
+              <a
+                className="settings-helper settings-link"
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Get free key at aistudio.google.com
+              </a>
+            </div>
+          )}
+        </section>
+
+        <section className="mb-8">
+          <label className="label block mb-3">GitHub Token (Optional)</label>
+          <input
+            type="password"
+            className="settings-input"
+            placeholder="ghp_..."
+            value={githubToken}
+            onChange={(e) => setGithubToken(e.target.value)}
+          />
+          <p className="settings-helper mt-2">Increases rate limit from 60 to 5000 req/hour</p>
+          <a
+            className="settings-helper settings-link"
+            href="https://github.com/settings/tokens"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Generate at github.com/settings/tokens
+          </a>
+        </section>
+
+        <section className="mb-8">
+          <label className="label block mb-3">Mode</label>
+          <div className="grid grid-cols-2 border border-[var(--border)]">
+            {[
+              { id: 'true', label: 'Mock Data' },
+              { id: 'false', label: 'Live API' }
+            ].map(option => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setMockMode(option.id)}
+                className={`settings-option px-3 py-3 text-[11px] font-medium transition-base ${mockMode === option.id ? 'bg-[var(--ink)] text-[var(--paper)]' : 'bg-transparent text-[var(--muted)]'}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="settings-helper mt-2">Mock mode works without any API keys</p>
+        </section>
+
+        <button
+          type="button"
+          onClick={handleSaveConfiguration}
+          className="settings-save w-full border border-[var(--ink)] bg-transparent px-4 py-3 label font-semibold text-[var(--ink)] transition-base"
+        >
+          Save Configuration
+        </button>
+      </aside>
+    </>
   );
 
   const ModePill = ({ mode, size = "sm" }) => {
@@ -507,86 +644,11 @@ const App = () => {
     );
   };
 
-  const SettingsModal = () => (
-    <div className="settings-modal" onClick={() => setShowSettings(false)}>
-      <div className="settings-content animate-fade-up" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="font-serif text-[24px]">Configuration</h2>
-          <button onClick={() => setShowSettings(false)} className="text-[12px] label">Close</button>
-        </div>
-        
-        <label className="label">AI PROVIDER</label>
-        <div className="provider-select">
-          <button 
-            className={`provider-btn ${settings.provider === 'mock' ? 'active' : ''}`}
-            onClick={() => setSettings({...settings, provider: 'mock'})}
-          >Mock</button>
-          <button 
-            className={`provider-btn ${settings.provider === 'bob' ? 'active' : ''}`}
-            onClick={() => setSettings({...settings, provider: 'bob'})}
-          >IBM Bob</button>
-          <button 
-            className={`provider-btn ${settings.provider === 'gemini' ? 'active' : ''}`}
-            onClick={() => setSettings({...settings, provider: 'gemini'})}
-          >Gemini</button>
-        </div>
-
-        {settings.provider === 'bob' && (
-          <>
-            <label className="label">IBM BOB API KEY</label>
-            <input 
-              type="password" 
-              className="settings-input" 
-              placeholder="sk-..." 
-              value={settings.bobKey}
-              onChange={e => setSettings({...settings, bobKey: e.target.value})}
-            />
-            <label className="label">API BASE URL</label>
-            <input 
-              type="text" 
-              className="settings-input" 
-              value={settings.bobUrl}
-              onChange={e => setSettings({...settings, bobUrl: e.target.value})}
-            />
-          </>
-        )}
-
-        {settings.provider === 'gemini' && (
-          <>
-            <label className="label">GOOGLE GEMINI API KEY</label>
-            <input 
-              type="password" 
-              className="settings-input" 
-              placeholder="AIza..." 
-              value={settings.geminiKey}
-              onChange={e => setSettings({...settings, geminiKey: e.target.value})}
-            />
-          </>
-        )}
-
-        <label className="label">GITHUB TOKEN (OPTIONAL)</label>
-        <input 
-          type="password" 
-          className="settings-input" 
-          placeholder="ghp_..." 
-          value={settings.githubToken}
-          onChange={e => setSettings({...settings, githubToken: e.target.value})}
-        />
-        <p className="text-[9px] text-[var(--dim)] mt-[-10px] mb-6">Required for private repos or high rate limits.</p>
-
-        <button 
-          onClick={() => setShowSettings(false)}
-          className="w-full bg-[var(--ink)] text-[var(--paper)] py-4 label font-bold hover:opacity-90"
-        >Save Configuration</button>
-      </div>
-    </div>
-  );
-
   // ─── RENDER STATES ───
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: styles }} />
-      {showSettings && <SettingsModal />}
+      <SettingsPanel />
 
       {appState === 'hero' && (
         <div className="min-h-screen w-full bg-[var(--paper)] relative overflow-hidden flex flex-col items-center justify-center pt-[120px] pb-20 px-5 sm:px-10">
@@ -603,9 +665,7 @@ const App = () => {
             </div>
 
             <div className="flex items-center gap-2 mb-4 animate-fade-up stagger-1.5">
-              <span className="font-serif text-[16px] text-[var(--accent)] font-bold">
-                {settings.provider === 'gemini' ? 'Enhanced with Gemini' : 'Made with IBM Bob'}
-              </span>
+              <span className="font-serif text-[16px] text-[var(--accent)] font-bold">Made with IBM Bob</span>
             </div>
 
             <h1 className="font-serif hero-h1 text-4xl sm:text-5xl md:text-7xl text-[var(--ink)] mb-[28px] animate-fade-up stagger-2">
@@ -615,8 +675,8 @@ const App = () => {
             </h1>
 
             <p className="text-[12px] text-[var(--muted)] font-normal leading-[1.8] max-w-[380px] mx-auto mb-[40px] animate-fade-up stagger-3">
-              <strong>RepoSense</strong> reads every file in your repository <br />
-              — not just the README. Full SDLC context with multi-model support.
+              <strong>IBM Bob</strong> reads every file in your repository <br />
+              — not just the README. Full SDLC context with 4 AI modes.
             </p>
 
             <div className="w-full relative animate-fade-up stagger-4">
@@ -669,8 +729,8 @@ const App = () => {
                 <div className="label mt-1">avg onboarding</div>
               </div>
               <div className="p-4 sm:p-5 text-left border-b sm:border-b-0 sm:border-r border-[var(--border)]">
-                <div className="font-serif text-[28px] text-[var(--ink)] leading-none">{settings.provider === 'mock' ? '4' : '∞'}</div>
-                <div className="label mt-1">Modes enabled</div>
+                <div className="font-serif text-[28px] text-[var(--ink)] leading-none">4</div>
+                <div className="label mt-1">Bob modes used</div>
               </div>
               <div className="p-4 sm:p-5 text-left">
                 <div className="font-serif text-[28px] text-[var(--rust)] leading-none">100%</div>
@@ -678,7 +738,7 @@ const App = () => {
               </div>
             </div>
 
-            {apiError && <div className="mt-8 text-[var(--rust)] label animate-fade-up font-medium bg-red-50 p-2 border border-red-200">{apiError}</div>}
+            {apiError && <div className="mt-8 text-[var(--rust)] label animate-fade-up font-medium">{apiError}</div>}
           </div>
         </div>
       )}
@@ -688,7 +748,7 @@ const App = () => {
           <Navbar />
           <main className="max-w-[400px] w-full text-center mt-20 px-5 sm:px-10">
             <div className="label border border-[var(--gold)] text-[var(--gold)] px-4 py-[6px] mb-8 inline-block">
-              {settings.provider.toUpperCase()} analyzing
+              IBM Bob analyzing
             </div>
 
             <div className="mb-10 flex justify-center">
@@ -700,7 +760,7 @@ const App = () => {
               </svg>
             </div>
 
-            <h2 className="font-serif text-[24px] text-[var(--ink)] mb-10">RepoSense is reading your codebase...</h2>
+            <h2 className="font-serif text-[24px] text-[var(--ink)] mb-10">IBM Bob is reading your codebase...</h2>
 
             <div className="space-y-4 mb-10 text-left">
               {steps.map((step, idx) => (
@@ -715,7 +775,7 @@ const App = () => {
                     )}
                   </div>
                   <div className={`flex items-center gap-2 text-[11px] ${idx === currentStep ? 'text-[var(--ink)] font-medium' : 'text-[var(--dim)] font-normal'}`}>
-                    <span>{step.label.replace('Bob', settings.provider === 'gemini' ? 'Gemini' : 'Bob')}</span>
+                    <span>{step.label}</span>
                     {idx === currentStep && step.mode && <ModePill mode={step.mode} />}
                   </div>
                 </div>
@@ -743,7 +803,7 @@ const App = () => {
             </div>
             <div className="hidden md:flex flex-col items-end gap-1">
               <div className="text-[10px] text-[var(--muted)] font-medium">
-                Using {settings.provider.toUpperCase()} Provider
+                Bob analyzed {parseRepoName(repoUrl)} using {analysis?.bob_modes_used?.length || 4} modes
               </div>
               <div className="flex gap-2">
                 {bobModesUsed.map(m => <ModePill key={m} mode={m} />)}
@@ -771,11 +831,11 @@ const App = () => {
             {activeTab === 'overview' && (
               <div className="card-grid animate-fade-up">
                 <div className="bob-stats-card col-span-full">
-                  <label className="bob-stats-label">ANALYSIS INSIGHTS</label>
+                  <label className="bob-stats-label">WHAT BOB DID</label>
 
                   <div className="bob-stats-grid grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5">
                     {[
-                      { value: analysis?.total_files || analysis?.file_tree_count || 247, label: 'FILES READ' },
+                      { value: analysis?.total_files || 247, label: 'FILES READ' },
                       { value: analysis?.bob_modes_used?.length || 4, label: 'MODES USED' },
                       { value: elapsedTime || '~28s', label: 'ANALYSIS TIME' },
                       { value: '100%', label: 'REPO COVERAGE' }
@@ -796,7 +856,7 @@ const App = () => {
                   </div>
 
                   <div className="bob-description">
-                    RepoSense read every file in this repository using {settings.provider.toUpperCase()}. Full context achieved.
+                    Bob read every file in this repository — not just the README. Full SDLC context.
                   </div>
                 </div>
 
@@ -806,61 +866,231 @@ const App = () => {
                     <div className="font-mono font-semibold text-[24px] mt-2 text-[var(--ink)]">{analysis?.architecture_type || 'MVC'}</div>
                   </div>
                   <div className="card">
-                    <label className="label">File Count</label>
+                    <label className="label">Files Analyzed</label>
                     <div className="font-mono font-semibold text-[24px] mt-2 text-[var(--ink)]">{analysis?.total_files || analysis?.file_tree_count || '247'}</div>
                   </div>
                 </div>
 
-                <div className="card col-span-full">
-                  <label className="label">Project: {analysis?.project_name || 'Repository'}</label>
-                  <p className="text-[12px] text-[var(--muted)] leading-[1.7] mt-3 mb-6">
-                    {analysis?.what_it_does || analysis?.one_line_summary}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {analysis?.tech_stack?.map((tech, i) => (
-                      <span key={i} className="label border border-[var(--border)] px-3 py-1 text-[var(--muted)]">
-                        {typeof tech === 'string' ? tech : tech.name}
-                      </span>
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-[1px]">
+                  <div className="card">
+                    <label className="label">Project</label>
+                    <div className="font-serif text-[24px] mt-2">{analysis?.project_name || 'Express.js'}</div>
+
+                    {/* Description */}
+                    <p style={{
+                      fontFamily: 'Geist Mono, monospace',
+                      fontSize: '12px',
+                      color: 'var(--muted)',
+                      lineHeight: 1.7,
+                      margin: '8px 0 16px'
+                    }}>
+                      {analysis?.what_it_does || analysis?.one_line_summary}
+                    </p>
+
+                    {/* Tech badges */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {analysis?.tech_stack?.map((tech, i) => {
+                        const techItem = typeof tech === 'string' ? { name: tech } : tech;
+                        const colors = {
+                          amber: { bg: '#c9a84c18', border: '#c9a84c40', text: '#92741a' },
+                          green: { bg: '#3d5a4718', border: '#3d5a4740', text: '#2d5a3d' },
+                          sage: { bg: '#3d5a4718', border: '#3d5a4740', text: '#2d5a3d' },
+                          rust: { bg: '#8b3a2a18', border: '#8b3a2a40', text: '#8b3a2a' },
+                          blue: { bg: '#1a1a2e18', border: '#1a1a2e40', text: '#1a1a2e' },
+                          purple: { bg: '#7c6af718', border: '#7c6af740', text: '#5a4fd4' },
+                          neutral: { bg: '#9e989018', border: '#9e989040', text: '#6b6560' }
+                        };
+                        const c = colors[techItem.color] || colors.neutral;
+                        return (
+                          <span key={i} style={{
+                            fontFamily: 'Geist Mono, monospace',
+                            fontSize: '9px',
+                            letterSpacing: '0.1em',
+                            textTransform: 'uppercase',
+                            padding: '3px 8px',
+                            border: `1px solid ${c.border}`,
+                            background: c.bg,
+                            color: c.text
+                          }}>
+                            {techItem.name}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <label className="label">Data Flow</label>
+                    {analysis?.data_flow?.length > 0 ? (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        marginTop: '12px'
+                      }}>
+                        {analysis.data_flow.map((item, i) => (
+                          <React.Fragment key={i}>
+                            <span style={{
+                              fontFamily: 'Geist Mono, monospace',
+                              fontSize: '11px',
+                              color: 'var(--muted)',
+                              border: '1px solid var(--border)',
+                              padding: '4px 10px',
+                              background: 'var(--paper2)'
+                            }}>
+                              {item.description || item}
+                            </span>
+                            {i < analysis.data_flow.length - 1 && (
+                              <span style={{ color: 'var(--dim)', fontSize: '14px' }}>→</span>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{
+                        fontFamily: 'Geist Mono, monospace',
+                        fontSize: '11px',
+                        color: 'var(--dim)',
+                        marginTop: '12px'
+                      }}>
+                        No data flow information available
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="card col-span-full">
-                  <label className="label">Key Files — Strategic Order</label>
+                  <label className="label">Key Files — Read In Order</label>
                   <div className="mt-4 flex flex-col">
                     {analysis?.key_files?.map((f, i) => (
-                      <div key={i} className="flex items-center gap-4 py-3 border-b border-[var(--border)] last:border-0 hover:bg-[var(--paper2)] -mx-6 px-6 transition-base">
-                        <span className="label text-[var(--dim)] w-4">{i + 1}</span>
+                      <div key={i} className="flex items-center gap-4 py-3 border-b border-[var(--border)] last:border-0 hover:bg-[var(--paper2)] -mx-4 sm:-mx-6 px-4 sm:px-6 transition-base group">
+                        <span className="label text-[var(--dim)] w-4 font-medium">{i + 1}</span>
                         <span className="text-[11px] text-[var(--rust)] font-medium flex-1">{f.path}</span>
-                        <ModePill mode={i % 4 === 0 ? "Plan" : i % 4 === 1 ? "Ask" : i % 4 === 2 ? "Code" : "Orchestrator"} />
+                        <ModePill mode={i === 0 ? "Plan" : i === 1 ? "Ask" : "Code"} />
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div className="card col-span-full">
-                  <label className="label">Onboarding Guide</label>
-                  <div className="mt-4 space-y-4">
+                  <label className="label">Onboarding Steps · Bob Generated</label>
+                  <div className="mt-4 space-y-[1px]">
                     {analysis?.onboarding_steps?.map((step, i) => (
-                      <div key={i} className="flex gap-4 items-start py-2">
-                        <div className={`w-5 h-5 flex items-center justify-center shrink-0 border border-[var(--border)] text-[9px] ${checkedSteps.has(i) ? 'bg-[var(--ink)] text-[var(--paper)]' : 'text-[var(--dim)]'}`} onClick={() => toggleStep(i)}>
-                          {checkedSteps.has(i) ? '✓' : i + 1}
+                      <div
+                        key={i}
+                        onClick={() => toggleStep(i)}
+                        className="step-item"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '16px',
+                          padding: '14px 0',
+                          borderBottom: '1px solid var(--border)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div
+                          className="step-check"
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            border: checkedSteps.has(i)
+                              ? 'none'
+                              : '1px solid var(--border)',
+                            background: checkedSteps.has(i)
+                              ? 'var(--ink)'
+                              : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            marginTop: '2px'
+                          }}
+                        >
+                          {checkedSteps.has(i) && (
+                            <span style={{ color: 'var(--paper)', fontSize: '10px' }}>✓</span>
+                          )}
                         </div>
-                        <div className="flex-1">
-                          <div className={`text-[12px] font-medium ${checkedSteps.has(i) ? 'line-through text-[var(--dim)]' : 'text-[var(--ink)]'}`}>{step.action}</div>
-                          <div className="text-[10px] text-[var(--muted)] mt-1">{step.why}</div>
+
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            fontFamily: 'Geist Mono, monospace',
+                            fontSize: '9px',
+                            color: 'var(--dim)',
+                            letterSpacing: '0.1em',
+                            textTransform: 'uppercase',
+                            marginBottom: '4px'
+                          }}>
+                            STEP {String(step.step || i + 1).padStart(2, '0')}
+                          </div>
+
+                          <div style={{
+                            fontFamily: 'Geist Mono, monospace',
+                            fontSize: '13px',
+                            color: checkedSteps.has(i) ? 'var(--dim)' : 'var(--ink)',
+                            fontWeight: 500,
+                            textDecoration: checkedSteps.has(i) ? 'line-through' : 'none',
+                            marginBottom: '4px',
+                            lineHeight: 1.5
+                          }}>
+                            {step.action}
+                          </div>
+
+                          <div style={{
+                            fontFamily: 'Geist Mono, monospace',
+                            fontSize: '11px',
+                            color: 'var(--muted)',
+                            lineHeight: 1.6
+                          }}>
+                            {step.why}
+                            {step.code_ref && (
+                              <span style={{
+                                background: 'var(--paper2)',
+                                color: 'var(--rust)',
+                                border: '1px solid var(--border)',
+                                padding: '1px 6px',
+                                marginLeft: '6px',
+                                fontSize: '10px',
+                                fontFamily: 'Geist Mono, monospace'
+                              }}>
+                                {step.code_ref}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-                
-                <div className="col-span-full bg-[var(--paper2)] p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <span className="label font-bold">Ready to contribute?</span>
-                  <div className="flex gap-4">
-                    <button onClick={handleKickstart} className="bg-[var(--ink)] text-[var(--paper)] px-8 py-3 label font-bold">Start Coding →</button>
-                    <button onClick={handleExport} className="border border-[var(--border)] px-8 py-3 label font-bold">{exporting ? 'Exporting...' : 'Export Guide'}</button>
+
+                <div className="card col-span-full">
+                  <label className="label">Gotchas</label>
+                  <div className="mt-4 space-y-4">
+                    {analysis?.gotchas?.map((g, i) => (
+                      <div key={i} className="flex gap-4 items-start border-b border-[var(--border)] pb-4 last:border-0">
+                        <span className="text-[var(--gold)] text-[14px]">⚠</span>
+                        <p className="text-[11px] text-[var(--muted)] font-normal leading-[1.6]">{g}</p>
+                      </div>
+                    ))}
                   </div>
+                </div>
+
+                <div className="col-span-full bg-[var(--paper2)] p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+                  <div>
+                    <h3 className="font-serif text-[20px]">Ready to make your first contribution?</h3>
+                    <p className="label mt-1 font-medium">Bob will find an issue, write the fix...</p>
+                  </div>
+                  <button onClick={handleKickstart} className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-8 py-3 label font-semibold transition-base">Start Coding →</button>
+                </div>
+
+                <div className="col-span-full bg-[var(--paper)] p-4 sm:p-6 flex justify-end w-full">
+                  <button
+                    onClick={handleExport}
+                    disabled={exporting}
+                    className="export-button w-full sm:w-auto border border-[var(--border)] bg-transparent px-6 py-3 label font-semibold text-[var(--ink)] transition-base disabled:opacity-50"
+                  >
+                    {exporting ? 'Exporting...' : '↓ Export Onboarding Guide'}
+                  </button>
                 </div>
               </div>
             )}
@@ -870,35 +1100,63 @@ const App = () => {
                 {codingLoading ? (
                   <div className="py-20 text-center">
                     <div className="w-10 h-10 border-2 border-[var(--gold)] border-t-transparent animate-spin mx-auto mb-6" />
-                    <h2 className="font-serif text-[24px]">Generating first contribution...</h2>
+                    <h2 className="font-serif text-[24px]">Bob is orchestrating...</h2>
                   </div>
                 ) : !coding ? (
                   <div className="py-20 text-center max-w-md mx-auto">
-                    <h2 className="font-serif text-[28px] mb-4">Let Bob write your first PR</h2>
+                    <h2 className="font-serif text-[28px] mb-4">Let Bob write your first contribution</h2>
                     <p className="text-[11px] text-[var(--dim)] font-medium mb-10 leading-[1.8]">Bob will analyze the codebase, identify a small technical debt or bug, and generate the code change for you.</p>
-                    <button onClick={handleKickstart} className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-10 py-4 label font-semibold transition-base">Kickstart Contribution</button>
+                    <button onClick={handleKickstart} className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-10 py-4 label font-semibold transition-base">Start Coding For Me</button>
                   </div>
                 ) : (
                   <div className="space-y-8">
                     <div className="card-grid">
                       <div className="card col-span-full">
-                        <label className="label">Orchestration Results</label>
-                        <h3 className="font-serif text-[22px] mt-4 mb-2">{coding.issue_title || 'Issue Identified'}</h3>
-                        <p className="text-[11px] text-[var(--muted)] leading-[1.7] mb-6">{coding.explanation?.summary || coding.issue_description}</p>
+                        <label className="label">Bob · Orchestrator Mode · Issue Found</label>
+                        <h3 className="font-serif text-[22px] mt-4 mb-2">{coding.issue_title || coding.issue?.title || 'Issue'}</h3>
+                        <p className="text-[11px] text-[var(--muted)] font-normal leading-[1.7] mb-6">{coding.issue_description || coding.issue?.description}</p>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                          <span className="label text-[var(--gold)] font-medium">Complexity: {coding.complexity || coding.issue?.complexity || 'Medium'}</span>
+                          <span className="label text-[var(--sage)] font-medium">Impact: {coding.impact || coding.issue?.impact || 'Medium'}</span>
+                        </div>
+                      </div>
+
+                      <div className="card col-span-full">
+                        <label className="label">Bob Mode Chain</label>
+                        <div className="flex items-center justify-between gap-3 mt-8 max-w-lg mx-auto overflow-x-auto">
+                          {['Plan', 'Ask', 'Code', 'Orchestrator'].map((m, i) => (
+                            <React.Fragment key={i}>
+                              <div className={`flex flex-col items-center gap-2 transition-base ${activeMode >= i ? 'opacity-100' : 'opacity-30'}`}>
+                                <ModePill mode={m} size="lg" />
+                                <span className="label text-[8px] font-medium">{i === 0 ? 'Map' : i === 1 ? 'Context' : i === 2 ? 'Fix' : 'Verify'}</span>
+                              </div>
+                              {i < 3 && <span className="text-[var(--dim)]">→</span>}
+                            </React.Fragment>
+                          ))}
+                        </div>
                       </div>
 
                       <div className="col-span-full bg-[#0a0a0a] p-0">
-                        <div className="bg-[#111] border-b border-[#222] p-4 flex justify-between items-center">
-                          <span className="text-[10px] text-[#888] font-mono">{coding.files_involved?.[0] || 'changes'}</span>
-                          <button onClick={() => { navigator.clipboard.writeText(coding.code_changes?.[0]?.diff_lines?.map(l => l.content).join('\n') || ''); alert('Copied!'); }} className="label text-[#888] hover:text-white">Copy Diff</button>
+                        <div className="bg-[#111] border-b border-[#222] p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                          <span className="text-[10px] text-[#888] font-mono font-medium">{coding.files_involved?.[0] || 'unknown-file.js'}</span>
+                          <button onClick={() => { const diff = coding.code_changes?.[0]?.diff_lines?.map(l => l.content).join('\n') || ''; navigator.clipboard.writeText(diff); alert('Diff copied!'); }} className="label text-[#888] border border-[#333] px-3 py-1 font-semibold hover:text-[#bbb] transition-base">Copy Diff</button>
                         </div>
-                        <div className="p-6 font-mono text-[11px] leading-[1.9] overflow-x-auto text-white">
+                        <div className="p-4 sm:p-6 font-mono text-[11px] leading-[1.9] overflow-x-auto font-normal">
                           {coding.code_changes?.[0]?.diff_lines?.map((line, i) => (
-                            <div key={i} className={`${line.type === 'add' ? 'text-green-400' : line.type === 'remove' ? 'text-red-400' : 'text-gray-500'}`}>
-                              {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '} {line.content}
+                            <div key={i} className={`px-4 -mx-6 ${line.type === 'add' ? 'bg-[rgba(74,222,128,0.06)] border-l-2 border-[#22c55e] text-[#4ade80]' : line.type === 'remove' ? 'bg-[rgba(239,68,68,0.06)] border-l-2 border-[#ef4444] text-[#f87171]' : 'text-[#666]'}`}>
+                              {line.content}
                             </div>
                           ))}
                         </div>
+                      </div>
+
+                      <div className="col-span-full card flex flex-col sm:flex-row items-start gap-5">
+                        <div className="w-2 h-2 bg-[var(--sage)] mt-[6px] shrink-0" />
+                        <div className="flex-1">
+                          <div className="text-[13px] font-semibold text-[var(--ink)]">{coding.pr_title || coding.pr?.title || 'Pull Request'}</div>
+                          <p className="text-[10px] text-[var(--dim)] font-medium mt-2 leading-[1.6]">{coding.pr_description || coding.pr?.description || 'Description'}</p>
+                        </div>
+                        <button onClick={() => { navigator.clipboard.writeText(coding.pr_title || ''); alert('PR title copied!'); }} className="w-full sm:w-auto label border border-[var(--border)] px-4 py-2 font-semibold">Copy PR</button>
                       </div>
                     </div>
                   </div>
@@ -908,28 +1166,39 @@ const App = () => {
 
             {activeTab === 'chat' && (
               <div className="animate-fade-up">
-                <div className="h-[500px] border border-[var(--border)] bg-[var(--paper)] flex flex-col">
-                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <label className="label">Ask Bob Anything</label>
+                <div className="flex flex-wrap gap-2 mt-4 mb-10">
+                  {["How does routing work?", "Where to add auth?", "What does middleware do?", "How to add an API?"].map(q => (
+                    <button key={q} onClick={() => handleSend(q)} className="label border border-[var(--border)] px-3 py-[6px] text-[var(--muted)] font-medium hover:border-[var(--gold)] hover:text-[var(--gold)] transition-base">{q}</button>
+                  ))}
+                </div>
+
+                <div className="h-[460px] border border-[var(--border)] bg-[var(--paper)] flex flex-col">
+                  <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-8 no-scrollbar">
+                    {chatMessages.length === 0 && (
+                      <div className="text-[11px] text-[var(--dim)] italic font-mono font-normal">I've analyzed the repository. Ask me anything about the codebase — architecture, specific files, or how to implement new features.</div>
+                    )}
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex flex-col ${m.role === 'bob' ? 'items-start' : 'items-end'}`}>
-                        <div className={`p-4 text-[11px] leading-[1.7] max-w-[85%] font-mono ${m.role === 'bob' ? 'bg-[var(--paper2)] text-[var(--ink)] border border-[var(--border)]' : 'bg-[var(--ink)] text-[var(--paper)]'}`}>
+                        {m.role === 'bob' && <label className="label text-[var(--sage)] mb-2 font-semibold">Bob · Ask Mode</label>}
+                        <div className={`p-4 text-[11px] leading-[1.7] max-w-[85%] font-mono font-normal ${m.role === 'bob' ? 'bg-[var(--paper2)] border border-[var(--border)] text-[var(--ink)]' : 'bg-[var(--ink)] text-[var(--paper)]'}`}>
                           {m.content}
                         </div>
                       </div>
                     ))}
-                    {isTyping && <div className="text-[9px] animate-pulse label">BOB IS THINKING...</div>}
+                    {isTyping && <div className="flex gap-1 animate-pulse"><div className="w-1.5 h-1.5 bg-[var(--dim)]" /><div className="w-1.5 h-1.5 bg-[var(--dim)]" /><div className="w-1.5 h-1.5 bg-[var(--dim)]" /></div>}
                     <div ref={chatEndRef} />
                   </div>
-                  <div className="border-t border-[var(--border)] flex">
+                  <div className="border-t border-[var(--border)] flex flex-col sm:flex-row">
                     <input
                       type="text"
-                      className="flex-1 bg-[var(--paper2)] px-6 py-5 text-[12px] font-mono outline-none"
-                      placeholder="Ask about architecture, patterns, or files..."
+                      className="flex-1 bg-[var(--paper2)] px-6 py-5 text-[12px] font-mono font-normal outline-none focus:bg-[var(--paper)] transition-base text-[var(--ink)]"
+                      placeholder="Ask a question..."
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     />
-                    <button onClick={() => handleSend()} className="bg-[var(--ink)] text-[var(--paper)] px-10 label font-bold">Send</button>
+                    <button onClick={() => handleSend()} className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-10 py-4 sm:py-0 label font-semibold transition-base">Send</button>
                   </div>
                 </div>
               </div>
