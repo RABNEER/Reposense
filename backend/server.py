@@ -211,16 +211,40 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
     try:
         logger.info(f"Analyzing repository: {payload.github_url}")
         config = get_request_config(http_request)
-        client = get_configured_client(config)
 
-        if using_mock(config, client):
+        # Read config from headers (user's settings panel)
+        gemini_key = http_request.headers.get('X-Gemini-Key', '')
+        bob_key = http_request.headers.get('X-IBM-Bob-Key', '') or \
+                  os.getenv('IBM_BOB_API_KEY', 'mock')
+        provider = http_request.headers.get('X-AI-Provider', 'bob')
+        mock_header = http_request.headers.get('X-Mock-Mode', 'true')
+
+        # Determine if mock mode
+        use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
+
+        # Get correct AI client based on settings
+        if use_mock:
+            ai_client = None
+        elif provider == 'gemini' and gemini_key:
+            from backend.gemini_client import GeminiClient
+            ai_client = GeminiClient(api_key=gemini_key)
+        elif bob_key and bob_key != 'mock':
+            from backend.bob_client import BobClient
+            ai_client = BobClient(api_key=bob_key)
+        else:
+            ai_client = None
+
+        # Update config with determined client
+        config["client"] = ai_client
+
+        if using_mock(config, ai_client):
             logger.info("Using mock analysis response")
             return get_mock_analyze_response(payload.github_url)
 
         repo_context = build_repo_context(payload.github_url, config["github_token"])
         logger.info(f"Repository context built: {repo_context['repo_name']}")
 
-        analysis = await call_ai(client, "analyze", 120.0, repo_context)
+        analysis = await call_ai(ai_client, "analyze", 120.0, repo_context)
 
         logger.info(f"Analysis complete for {repo_context['repo_name']}")
         return analysis
@@ -259,14 +283,38 @@ async def ask_question(payload: AskRequest, http_request: Request):
     try:
         logger.info(f"Question for {payload.github_url}: {payload.question[:50]}...")
         config = get_request_config(http_request)
-        client = get_configured_client(config)
 
-        if using_mock(config, client):
+        # Read config from headers (user's settings panel)
+        gemini_key = http_request.headers.get('X-Gemini-Key', '')
+        bob_key = http_request.headers.get('X-IBM-Bob-Key', '') or \
+                  os.getenv('IBM_BOB_API_KEY', 'mock')
+        provider = http_request.headers.get('X-AI-Provider', 'bob')
+        mock_header = http_request.headers.get('X-Mock-Mode', 'true')
+
+        # Determine if mock mode
+        use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
+
+        # Get correct AI client based on settings
+        if use_mock:
+            ai_client = None
+        elif provider == 'gemini' and gemini_key:
+            from backend.gemini_client import GeminiClient
+            ai_client = GeminiClient(api_key=gemini_key)
+        elif bob_key and bob_key != 'mock':
+            from backend.bob_client import BobClient
+            ai_client = BobClient(api_key=bob_key)
+        else:
+            ai_client = None
+
+        # Update config with determined client
+        config["client"] = ai_client
+
+        if using_mock(config, ai_client):
             logger.info("Using mock ask response")
             return get_mock_ask_response(payload.github_url, payload.question)
 
         repo_context = build_repo_context(payload.github_url, config["github_token"])
-        response = await call_ai(client, "ask", 120.0, repo_context, payload.question, payload.history)
+        response = await call_ai(ai_client, "ask", 120.0, repo_context, payload.question, payload.history)
 
         logger.info(f"Question answered for {repo_context['repo_name']}")
         return response
@@ -298,16 +346,40 @@ async def kickstart_task(payload: TaskRequest, http_request: Request):
     try:
         logger.info(f"Starting orchestration for {payload.github_url}")
         config = get_request_config(http_request)
-        client = get_configured_client(config)
 
-        if using_mock(config, client):
+        # Read config from headers (user's settings panel)
+        gemini_key = http_request.headers.get('X-Gemini-Key', '')
+        bob_key = http_request.headers.get('X-IBM-Bob-Key', '') or \
+                  os.getenv('IBM_BOB_API_KEY', 'mock')
+        provider = http_request.headers.get('X-AI-Provider', 'bob')
+        mock_header = http_request.headers.get('X-Mock-Mode', 'true')
+
+        # Determine if mock mode
+        use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
+
+        # Get correct AI client based on settings
+        if use_mock:
+            ai_client = None
+        elif provider == 'gemini' and gemini_key:
+            from backend.gemini_client import GeminiClient
+            ai_client = GeminiClient(api_key=gemini_key)
+        elif bob_key and bob_key != 'mock':
+            from backend.bob_client import BobClient
+            ai_client = BobClient(api_key=bob_key)
+        else:
+            ai_client = None
+
+        # Update config with determined client
+        config["client"] = ai_client
+
+        if using_mock(config, ai_client):
             logger.info("Using mock orchestration response")
             return get_mock_orchestrate_response(payload.github_url)
 
         repo_context = build_repo_context(payload.github_url, config["github_token"])
         logger.info(f"Running full orchestration pipeline for {repo_context['repo_name']}")
 
-        coding_response = await call_ai(client, "orchestrate", 180.0, repo_context)
+        coding_response = await call_ai(ai_client, "orchestrate", 180.0, repo_context)
 
         logger.info(f"Orchestration complete for {repo_context['repo_name']}")
         return coding_response
@@ -339,14 +411,38 @@ async def export_markdown(payload: ExportRequest, http_request: Request):
     try:
         logger.info(f"Generating markdown export for {payload.github_url}")
         config = get_request_config(http_request)
-        client = get_configured_client(config)
 
-        if using_mock(config, client):
+        # Read config from headers (user's settings panel)
+        gemini_key = http_request.headers.get('X-Gemini-Key', '')
+        bob_key = http_request.headers.get('X-IBM-Bob-Key', '') or \
+                  os.getenv('IBM_BOB_API_KEY', 'mock')
+        provider = http_request.headers.get('X-AI-Provider', 'bob')
+        mock_header = http_request.headers.get('X-Mock-Mode', 'true')
+
+        # Determine if mock mode
+        use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
+
+        # Get correct AI client based on settings
+        if use_mock:
+            ai_client = None
+        elif provider == 'gemini' and gemini_key:
+            from backend.gemini_client import GeminiClient
+            ai_client = GeminiClient(api_key=gemini_key)
+        elif bob_key and bob_key != 'mock':
+            from backend.bob_client import BobClient
+            ai_client = BobClient(api_key=bob_key)
+        else:
+            ai_client = None
+
+        # Update config with determined client
+        config["client"] = ai_client
+
+        if using_mock(config, ai_client):
             repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
             markdown_content = f"# {repo_name} - Developer Onboarding Guide\n\nGenerated with RepoSense mock mode."
         else:
             repo_context = build_repo_context(payload.github_url, config["github_token"])
-            markdown_content = await call_ai(client, "generate_doc", 120.0, repo_context)
+            markdown_content = await call_ai(ai_client, "generate_doc", 120.0, repo_context)
             repo_name = repo_context["repo_name"]
 
         date_str = datetime.utcnow().strftime("%Y-%m-%d")

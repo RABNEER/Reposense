@@ -1,13 +1,10 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === 'true';
 
-class ApiError extends Error {
-  constructor(message, statusCode, detail) {
-    super(message);
-    this.name = 'ApiError';
-    this.statusCode = statusCode;
-    this.detail = detail;
-  }
+function isMockMode() {
+  if (typeof window === 'undefined') return import.meta.env.VITE_MOCK_MODE === 'true';
+  const stored = localStorage.getItem('mock_mode');
+  if (stored !== null) return stored === 'true';
+  return import.meta.env.VITE_MOCK_MODE === 'true';
 }
 
 function getStoredValue(key, fallback = '') {
@@ -16,13 +13,18 @@ function getStoredValue(key, fallback = '') {
 }
 
 function getConfigHeaders() {
+  const provider = localStorage.getItem('ai_provider') || 'bob';
+  const mockMode = localStorage.getItem('mock_mode');
+  const envMockMode = import.meta.env.VITE_MOCK_MODE || 'true';
+
   return {
+    'Content-Type': 'application/json',
     'X-IBM-Bob-Key': getStoredValue('ibm_bob_key'),
     'X-IBM-Bob-Base-Url': getStoredValue('ibm_bob_base_url', 'https://bob.ibm.com'),
     'X-Gemini-Key': getStoredValue('gemini_key'),
     'X-GitHub-Token': getStoredValue('github_token'),
-    'X-AI-Provider': getStoredValue('ai_provider', 'bob'),
-    'X-Mock-Mode': getStoredValue('mock_mode', 'true')
+    'X-AI-Provider': provider,
+    'X-Mock-Mode': mockMode !== null ? mockMode : envMockMode
   };
 }
 
@@ -79,7 +81,7 @@ async function request(endpoint, options = {}) {
 }
 
 export async function analyzeRepo(githubUrl) {
-  if (MOCK_MODE) {
+  if (isMockMode()) {
     await new Promise(resolve => setTimeout(resolve, 3000));
     return getMockAnalysis();
   }
@@ -91,7 +93,7 @@ export async function analyzeRepo(githubUrl) {
 }
 
 export async function askQuestion(githubUrl, question, history = []) {
-  if (MOCK_MODE) {
+  if (isMockMode()) {
     await new Promise(resolve => setTimeout(resolve, 1500));
     return getMockAnswer(question);
   }
@@ -103,7 +105,7 @@ export async function askQuestion(githubUrl, question, history = []) {
 }
 
 export async function kickstartTask(githubUrl) {
-  if (MOCK_MODE) {
+  if (isMockMode()) {
     await new Promise(resolve => setTimeout(resolve, 4000));
     return getMockCoding();
   }
@@ -140,7 +142,7 @@ function getExportFilename(githubUrl) {
 }
 
 export async function exportMarkdown(githubUrl) {
-  if (MOCK_MODE) {
+  if (isMockMode()) {
     const mockMarkdown = `# RepoSense Analysis\n\nGenerated for: ${githubUrl}\n\n## Overview\n\nThis is a mock export.`;
     const blob = new Blob([mockMarkdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
