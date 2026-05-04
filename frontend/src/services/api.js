@@ -33,7 +33,7 @@ async function request(endpoint, options = {}) {
       } catch {
         errorData = { error: 'Unknown error', detail: response.statusText };
       }
-      
+
       throw new ApiError(
         errorData.error || 'Request failed',
         response.status,
@@ -44,15 +44,15 @@ async function request(endpoint, options = {}) {
     return await response.json();
   } catch (error) {
     clearTimeout(timeoutId);
-    
+
     if (error.name === 'AbortError') {
       throw new ApiError('Request timeout - please try again', 504, 'The request took too long');
     }
-    
+
     if (error instanceof ApiError) {
       throw error;
     }
-    
+
     throw new ApiError(
       'Network error — is the backend running?',
       0,
@@ -66,7 +66,7 @@ export async function analyzeRepo(githubUrl) {
     await new Promise(resolve => setTimeout(resolve, 3000));
     return getMockAnalysis();
   }
-  
+
   return request('/api/analyze', {
     method: 'POST',
     body: JSON.stringify({ github_url: githubUrl }),
@@ -78,7 +78,7 @@ export async function askQuestion(githubUrl, question, history = []) {
     await new Promise(resolve => setTimeout(resolve, 1500));
     return getMockAnswer(question);
   }
-  
+
   return request('/api/ask', {
     method: 'POST',
     body: JSON.stringify({ github_url: githubUrl, question, history }),
@@ -90,11 +90,36 @@ export async function kickstartTask(githubUrl) {
     await new Promise(resolve => setTimeout(resolve, 4000));
     return getMockCoding();
   }
-  
+
   return request('/api/task', {
     method: 'POST',
     body: JSON.stringify({ github_url: githubUrl }),
   });
+}
+
+function getRepoSlug(githubUrl) {
+  try {
+    const cleaned = githubUrl
+      .replace('https://github.com/', '')
+      .replace('http://github.com/', '')
+      .replace('https://www.github.com/', '')
+      .replace('http://www.github.com/', '')
+      .replace('github.com/', '')
+      .split('/tree/')[0]
+      .split('/blob/')[0]
+      .replace(/\/$/, '');
+
+    return cleaned
+      .replace(/[^\w.-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'repository';
+  } catch {
+    return 'repository';
+  }
+}
+
+function getExportFilename(githubUrl) {
+  const date = new Date().toISOString().slice(0, 10);
+  return `reposense-${getRepoSlug(githubUrl)}-${date}.md`;
 }
 
 export async function exportMarkdown(githubUrl) {
@@ -104,33 +129,30 @@ export async function exportMarkdown(githubUrl) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `reposense-export-${Date.now()}.md`;
+    a.download = getExportFilename(githubUrl);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     return;
   }
-  
+
   const response = await fetch(`${BASE_URL}/api/export/markdown`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ github_url: githubUrl }),
   });
-  
+
   if (!response.ok) {
     throw new ApiError('Export failed', response.status, 'Could not generate markdown');
   }
-  
+
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  
-  const contentDisposition = response.headers.get('Content-Disposition');
-  const filenameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
-  a.download = filenameMatch ? filenameMatch[1] : `reposense-export-${Date.now()}.md`;
-  
+  a.download = getExportFilename(githubUrl);
+
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -199,7 +221,7 @@ function getMockAnswer(question) {
   const answers = {
     default: "Express uses a layered middleware architecture. Each middleware function has access to `req`, `res`, and `next()`. Call `next()` to pass control to the next middleware in the stack. The router lives in `lib/router/index.js` and matches HTTP methods and paths to handler functions."
   };
-  
+
   return {
     answer: answers.default,
     files_referenced: ["lib/router/index.js", "lib/application.js", "lib/middleware/init.js"],

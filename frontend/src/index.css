@@ -36,9 +36,9 @@ body {
   color: var(--ink);
   font-family: 'Geist Mono', monospace;
   font-weight: 400;
-  cursor: crosshair;
   min-height: 100vh;
   overflow-x: hidden;
+  cursor: default;
 }
 
 body::before {
@@ -60,9 +60,11 @@ body::before {
 ::-webkit-scrollbar {
   width: 4px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--paper2);
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--gold);
 }
@@ -90,50 +92,103 @@ body::before {
 /* ── Animations ── */
 
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.05); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
 }
 
 @keyframes typing {
-  0%, 60%, 100% { opacity: 0.2; }
-  30% { opacity: 1; }
+
+  0%,
+  60%,
+  100% {
+    opacity: 0.2;
+  }
+
+  30% {
+    opacity: 1;
+  }
 }
 
 @keyframes progressFill {
-  from { width: 0%; }
-  to { width: 100%; }
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
 }
 
 .animate-fade-up {
   animation: fadeUp 600ms ease both;
 }
 
-.stagger-1 { animation-delay: 0ms; }
-.stagger-2 { animation-delay: 100ms; }
-.stagger-3 { animation-delay: 200ms; }
-.stagger-4 { animation-delay: 300ms; }
-.stagger-5 { animation-delay: 400ms; }
-.stagger-6 { animation-delay: 500ms; }
+.stagger-1 {
+  animation-delay: 0ms;
+}
+
+.stagger-2 {
+  animation-delay: 100ms;
+}
+
+.stagger-3 {
+  animation-delay: 200ms;
+}
+
+.stagger-4 {
+  animation-delay: 300ms;
+}
+
+.stagger-5 {
+  animation-delay: 400ms;
+}
+
+.stagger-6 {
+  animation-delay: 500ms;
+}
 
 /* ── Interactive ── */
 
-button, a, [role="button"] {
+button,
+a,
+[role="button"] {
   cursor: pointer;
   transition: all 150ms ease;
 }
 
 input {
-  cursor: crosshair;
+  cursor: text;
 }
 
 input:focus {
