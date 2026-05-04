@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     container_name: reposense-backend
     ports:
-      - "8000:8000"
+      - "8080:8080"
     environment:
       - IBM_BOB_API_KEY=${IBM_BOB_API_KEY:-mock}
       - IBM_BOB_API_URL=${IBM_BOB_API_URL:-https://bob-api.ibm.com}
@@ -18,7 +18,7 @@ services:
       - ./backend:/app
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -32,7 +32,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:8080
     volumes:
       - ./frontend:/app
       - /app/node_modules
