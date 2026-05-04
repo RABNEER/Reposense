@@ -79,10 +79,27 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "*",
+        "Content-Type",
+        "Authorization",
+        "X-Gemini-Key",
+        "X-IBM-Bob-Key",
+        "X-IBM-Bob-Base-Url",
+        "X-AI-Provider",
+        "X-Mock-Mode",
+        "X-GitHub-Token",
+    ],
+    expose_headers=["*"],
+    max_age=86400
 )
+
+
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    return {"status": "ok"}
 
 
 @app.middleware("http")
