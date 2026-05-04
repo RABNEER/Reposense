@@ -9,7 +9,7 @@ load_dotenv(dotenv_path=env_path)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-GEMINI_MODEL = "gemini-1.5-flash-preview-08-14"
+GEMINI_MODEL = "gemini-2.5-flash"
 
 
 class GeminiClient:
