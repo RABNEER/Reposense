@@ -2,6 +2,7 @@ import os
 import httpx
 import json
 import re
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -11,6 +12,7 @@ load_dotenv(dotenv_path=env_path)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 GEMINI_MODEL = "gemini-2.5-flash"
+logger = logging.getLogger(__name__)
 
 
 class GeminiClient:
@@ -75,7 +77,9 @@ class GeminiClient:
                 raise Exception(f"Gemini API error: {response.text}")
 
             data = response.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
+            logger.info(f"Gemini raw response (first 300 chars): {text[:300]}")
+            return text
 
     def parse_json_response(self, raw: str) -> dict:
         import re
