@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
     api_key = os.getenv("IBM_BOB_API_KEY", "")
     gemini_key = os.getenv("GEMINI_API_KEY", "")
     github_token = os.getenv("GITHUB_TOKEN")
-    port = os.getenv("PORT", "8080")
+    port = os.getenv("PORT", "8000")
 
     if api_key and api_key != "mock":
         logger.info("IBM Bob API key configured")
