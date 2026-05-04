@@ -2,7 +2,7 @@
 
 **Turn idea into impact faster** — Understand any codebase in 2 minutes, not 2 weeks.
 
-RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repositories and generates comprehensive onboarding reports using **IBM Bob**. Built for the **IBM Bob Hackathon**.
+RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repositories and generates comprehensive onboarding reports. It features **Multi-Model Support** (IBM Bob, Google Gemini, and Mock modes) and is built for the **IBM Bob Hackathon**.
 
 ## 🎯 Problem We Solve
 
@@ -16,14 +16,20 @@ Developers waste **weeks** understanding new codebases:
 
 ## ✨ Features
 
-### 🤖 Powered by IBM Bob (All 4 Modes)
+### 🤖 Multi-Model AI Pipeline
 
-RepoSense leverages **all IBM Bob modes** for comprehensive analysis:
+RepoSense features a dynamic AI provider pipeline that allows users to switch between models on-the-fly:
 
-1. **Plan Mode** — Analyzes repository architecture and creates structured onboarding plans
-2. **Ask Mode** — Answers questions about the codebase with full context
-3. **Code Mode** — Generates actual code fixes and improvements
-4. **Orchestrator Mode** — Chains all modes together for complete task automation
+1. **IBM Bob** — Full integration across all 4 modes (Plan, Ask, Code, Orchestrator).
+2. **Google Gemini** — Powerful alternative/fallback for high-performance analysis (supports `gemini-2.0-flash`).
+3. **Mock Mode** — Zero-cost testing mode for development and demonstrations.
+
+### ⚙️ Persistent Configuration (BYOK)
+
+The frontend includes a **Settings Panel** (accessible via the gear icon) that allows users to:
+- **Switch Providers**: Toggle between IBM Bob and Gemini instantly.
+- **Custom Keys**: Use your own API keys for both providers.
+- **Persistence**: All settings are saved to `localStorage`, ensuring your configuration survives browser refreshes.
 
 ### 📊 What You Get
 
@@ -74,7 +80,7 @@ RepoSense leverages **all IBM Bob modes** for comprehensive analysis:
 
 - Node.js 18+ and npm
 - Python 3.11+
-- IBM Bob API key (or use mock mode)
+- IBM Bob API key or Google Gemini API key (or use mock mode)
 
 ### Backend Setup
 

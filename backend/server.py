@@ -20,16 +20,22 @@ try:
     from backend.github_parser import build_repo_context, GitHubParserError
     from backend.bob_client import (
         analyze, ask, orchestrate, generate_doc,
-        BobAPIError, BobParseError, MOCK_MODE
+        BobAPIError, BobParseError, MOCK_MODE, get_ai_client
     )
 except ImportError:
     from github_parser import build_repo_context, GitHubParserError
     from bob_client import (
         analyze, ask, orchestrate, generate_doc,
-        BobAPIError, BobParseError, MOCK_MODE
+        BobAPIError, BobParseError, MOCK_MODE, get_ai_client
     )
 
 logging.basicConfig(level=logging.INFO)
+# Set logging to a file as well for production debugging
+log_file = Path(__file__).parent / 'server.log'
+file_handler = logging.FileHandler(log_file)
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(file_handler)
+
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
@@ -39,17 +45,20 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
     
     api_key = os.getenv("IBM_BOB_API_KEY", "")
+    gemini_key = os.getenv("GEMINI_API_KEY", "")
     github_token = os.getenv("GITHUB_TOKEN")
     port = os.getenv("PORT", "8000")
     
-    if not api_key:
-        logger.error("FATAL: IBM_BOB_API_KEY not set")
-        raise RuntimeError("IBM_BOB_API_KEY environment variable is required")
+    if not api_key and not gemini_key:
+        logger.warning("⚠️  No API keys set - running in strict MOCK MODE")
     
     if api_key == "mock":
-        logger.warning("⚠️  MOCK MODE ENABLED - Using simulated IBM Bob responses")
-    else:
-        logger.info("✓ IBM Bob API key configured")
+        logger.warning("⚠️  IBM Bob set to MOCK MODE")
+    elif api_key:
+        logger.info("✓ IBM Bob API key detected")
+        
+    if gemini_key:
+        logger.info("✓ Gemini API key detected (Fallback/Alternative enabled)")
     
     if github_token:
         logger.info("✓ GitHub token configured (higher rate limits)")
@@ -67,8 +76,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="RepoSense API",
-    description="AI-powered repository onboarding with IBM Bob",
-    version="1.0.0",
+    description="AI-powered repository onboarding with IBM Bob & Gemini",
+    version="1.1.0",
     lifespan=lifespan
 )
 
@@ -130,238 +139,119 @@ class ExportRequest(BaseModel):
             raise ValueError('Must be a valid GitHub repository URL')
         return v
 
-class ErrorResponse(BaseModel):
-    error: str
-    detail: str
-    code: int
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Internal server error",
-            "detail": "An unexpected error occurred. Please try again.",
-            "code": 500
-        }
-    )
-
 @app.get("/api/health")
 async def health_check():
     api_key = os.getenv("IBM_BOB_API_KEY", "")
+    gemini_key = os.getenv("GEMINI_API_KEY", "")
     return {
         "status": "ok",
-        "version": "1.0.0",
-        "bob_connected": bool(api_key and api_key != ""),
+        "version": "1.1.0",
+        "bob_enabled": bool(api_key and api_key != "mock"),
+        "gemini_enabled": bool(gemini_key),
         "mock_mode": MOCK_MODE,
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }
 
 @app.post("/api/analyze")
-async def analyze_repository(request: AnalyzeRequest):
+async def analyze_repository(request: Request, body: AnalyzeRequest):
     try:
-        logger.info(f"Analyzing repository: {request.github_url}")
+        logger.info(f"Analyzing repository: {body.github_url}")
         
-        github_token = os.getenv("GITHUB_TOKEN")
-        repo_context = build_repo_context(request.github_url, github_token)
+        # Check for custom GitHub token in header
+        github_token = request.headers.get('X-GitHub-Token') or os.getenv("GITHUB_TOKEN")
+        repo_context = build_repo_context(body.github_url, github_token)
         
-        logger.info(f"Repository context built: {repo_context['repo_name']}")
+        # Get appropriate AI client based on headers/env
+        client = get_ai_client(request.headers)
         
-        analysis = await asyncio.wait_for(
-            asyncio.to_thread(analyze, repo_context),
-            timeout=120.0
-        )
-        
-        logger.info(f"Analysis complete for {repo_context['repo_name']}")
+        if client:
+            logger.info(f"Using {client.__class__.__name__} for analysis")
+            analysis = await client.analyze(repo_context)
+        else:
+            logger.info("Using mock mode for analysis")
+            analysis = await asyncio.to_thread(analyze, repo_context)
+            
         return analysis
         
-    except asyncio.TimeoutError:
-        logger.error(f"Analysis timeout for {request.github_url}")
-        raise HTTPException(
-            status_code=504,
-            detail={
-                "error": "Analysis timeout",
-                "detail": "The analysis took too long. Please try again with a smaller repository.",
-                "code": 504
-            }
-        )
-    except GitHubParserError as e:
-        logger.error(f"GitHub parser error: {str(e)}")
-        if "private" in str(e).lower():
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": "Repository is private",
-                    "detail": str(e),
-                    "code": 403
-                }
-            )
-        elif "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "error": "Repository not found",
-                    "detail": str(e),
-                    "code": 404
-                }
-            )
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error": "Invalid repository",
-                    "detail": str(e),
-                    "code": 400
-                }
-            )
-    except (BobAPIError, BobParseError) as e:
-        logger.error(f"IBM Bob error: {str(e)}")
-        raise HTTPException(
-            status_code=502,
-            detail={
-                "error": "IBM Bob unavailable",
-                "detail": f"Could not connect to IBM Bob: {str(e)}",
-                "code": 502
-            }
-        )
-    except ValueError as e:
-        logger.error(f"Validation error: {str(e)}")
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "Invalid request",
-                "detail": str(e),
-                "code": 400
-            }
-        )
+    except Exception as e:
+        logger.error(f"Analysis failed: {str(e)}")
+        if isinstance(e, GitHubParserError):
+            raise HTTPException(status_code=400, detail=str(e))
+        if isinstance(e, (BobAPIError, BobParseError)):
+            raise HTTPException(status_code=502, detail=f"AI Provider Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/ask")
-async def ask_question(request: AskRequest):
+async def ask_question(request: Request, body: AskRequest):
     try:
-        logger.info(f"Question for {request.github_url}: {request.question[:50]}...")
+        logger.info(f"Question for {body.github_url}: {body.question[:50]}...")
         
-        github_token = os.getenv("GITHUB_TOKEN")
-        repo_context = build_repo_context(request.github_url, github_token)
+        github_token = request.headers.get('X-GitHub-Token') or os.getenv("GITHUB_TOKEN")
+        repo_context = build_repo_context(body.github_url, github_token)
         
-        response = await asyncio.wait_for(
-            asyncio.to_thread(ask, repo_context, request.question, request.history),
-            timeout=120.0
-        )
+        client = get_ai_client(request.headers)
         
-        logger.info(f"Question answered for {repo_context['repo_name']}")
+        if client:
+            response = await client.ask(repo_context, body.question, body.history)
+        else:
+            response = await asyncio.to_thread(ask, repo_context, body.question, body.history)
+            
         return response
         
-    except asyncio.TimeoutError:
-        logger.error(f"Question timeout for {request.github_url}")
-        raise HTTPException(
-            status_code=504,
-            detail={
-                "error": "Request timeout",
-                "detail": "The question took too long to answer. Please try a simpler question.",
-                "code": 504
-            }
-        )
-    except GitHubParserError as e:
-        logger.error(f"GitHub parser error: {str(e)}")
-        if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail={"error": "Repository is private", "detail": str(e), "code": 403})
-        elif "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
-        else:
-            raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
-    except (BobAPIError, BobParseError) as e:
-        logger.error(f"IBM Bob error: {str(e)}")
-        raise HTTPException(status_code=502, detail={"error": "IBM Bob unavailable", "detail": str(e), "code": 502})
+    except Exception as e:
+        logger.error(f"Ask failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/task")
-async def kickstart_task(request: TaskRequest):
+async def kickstart_task(request: Request, body: TaskRequest):
     try:
-        logger.info(f"Starting orchestration for {request.github_url}")
+        logger.info(f"Starting orchestration for {body.github_url}")
         
-        github_token = os.getenv("GITHUB_TOKEN")
-        repo_context = build_repo_context(request.github_url, github_token)
+        github_token = request.headers.get('X-GitHub-Token') or os.getenv("GITHUB_TOKEN")
+        repo_context = build_repo_context(body.github_url, github_token)
         
-        logger.info(f"Running full orchestration pipeline for {repo_context['repo_name']}")
+        client = get_ai_client(request.headers)
         
-        coding_response = await asyncio.wait_for(
-            asyncio.to_thread(orchestrate, repo_context),
-            timeout=180.0
-        )
-        
-        logger.info(f"Orchestration complete for {repo_context['repo_name']}")
+        if client:
+            logger.info(f"Using {client.__class__.__name__} for orchestration")
+            coding_response = await client.orchestrate(repo_context)
+        else:
+            logger.info("Using mock mode for orchestration")
+            coding_response = await asyncio.to_thread(orchestrate, repo_context)
+            
         return coding_response
         
-    except asyncio.TimeoutError:
-        logger.error(f"Orchestration timeout for {request.github_url}")
-        raise HTTPException(
-            status_code=504,
-            detail={
-                "error": "Orchestration timeout",
-                "detail": "The code generation took too long. Please try again.",
-                "code": 504
-            }
-        )
-    except GitHubParserError as e:
-        logger.error(f"GitHub parser error: {str(e)}")
-        if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail={"error": "Repository is private", "detail": str(e), "code": 403})
-        elif "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
-        else:
-            raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
-    except (BobAPIError, BobParseError) as e:
-        logger.error(f"IBM Bob error: {str(e)}")
-        raise HTTPException(status_code=502, detail={"error": "IBM Bob unavailable", "detail": str(e), "code": 502})
+    except Exception as e:
+        logger.error(f"Task orchestration failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/export/markdown")
-async def export_markdown(request: ExportRequest):
+async def export_markdown(request: Request, body: ExportRequest):
     try:
-        logger.info(f"Generating markdown export for {request.github_url}")
+        logger.info(f"Generating markdown export for {body.github_url}")
         
-        github_token = os.getenv("GITHUB_TOKEN")
-        repo_context = build_repo_context(request.github_url, github_token)
+        github_token = request.headers.get('X-GitHub-Token') or os.getenv("GITHUB_TOKEN")
+        repo_context = build_repo_context(body.github_url, github_token)
         
-        markdown_content = await asyncio.wait_for(
-            asyncio.to_thread(generate_doc, repo_context),
-            timeout=120.0
-        )
+        client = get_ai_client(request.headers)
+        
+        if client:
+            markdown_content = await client.generate_doc(repo_context)
+        else:
+            markdown_content = await asyncio.to_thread(generate_doc, repo_context)
         
         repo_name = repo_context['repo_name']
-        date_str = datetime.utcnow().strftime('%Y-%m-%d')
-        filename = f"reposense-{repo_name}-{date_str}.md"
-        
-        logger.info(f"Markdown export complete for {repo_name}")
+        filename = f"reposense-{repo_name}.md"
         
         return StreamingResponse(
             iter([markdown_content.encode('utf-8')]),
             media_type="text/markdown",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )
         
-    except asyncio.TimeoutError:
-        logger.error(f"Export timeout for {request.github_url}")
-        raise HTTPException(
-            status_code=504,
-            detail={
-                "error": "Export timeout",
-                "detail": "The export took too long. Please try again.",
-                "code": 504
-            }
-        )
-    except GitHubParserError as e:
-        logger.error(f"GitHub parser error: {str(e)}")
-        if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail={"error": "Repository is private", "detail": str(e), "code": 403})
-        elif "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
-        else:
-            raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
-    except (BobAPIError, BobParseError) as e:
-        logger.error(f"IBM Bob error: {str(e)}")
-        raise HTTPException(status_code=502, detail={"error": "IBM Bob unavailable", "detail": str(e), "code": 502})
+    except Exception as e:
+        logger.error(f"Export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
@@ -370,5 +260,3 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", 8000))
     )
-
-# Made with Bob

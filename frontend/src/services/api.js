@@ -1,5 +1,5 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === 'true';
+const MOCK_MODE_ENV = import.meta.env.VITE_MOCK_MODE === 'true';
 
 class ApiError extends Error {
   constructor(message, statusCode, detail) {
@@ -61,38 +61,47 @@ async function request(endpoint, options = {}) {
   }
 }
 
-export async function analyzeRepo(githubUrl) {
-  if (MOCK_MODE) {
+export async function analyzeRepo(githubUrl, headers = {}) {
+  const isMock = headers['X-Mock-Mode'] === 'true' || MOCK_MODE_ENV;
+  
+  if (isMock && !headers['X-AI-Provider']) {
     await new Promise(resolve => setTimeout(resolve, 3000));
     return getMockAnalysis();
   }
 
   return request('/api/analyze', {
     method: 'POST',
+    headers,
     body: JSON.stringify({ github_url: githubUrl }),
   });
 }
 
-export async function askQuestion(githubUrl, question, history = []) {
-  if (MOCK_MODE) {
+export async function askQuestion(githubUrl, question, history = [], headers = {}) {
+  const isMock = headers['X-Mock-Mode'] === 'true' || MOCK_MODE_ENV;
+
+  if (isMock && !headers['X-AI-Provider']) {
     await new Promise(resolve => setTimeout(resolve, 1500));
     return getMockAnswer(question);
   }
 
   return request('/api/ask', {
     method: 'POST',
+    headers,
     body: JSON.stringify({ github_url: githubUrl, question, history }),
   });
 }
 
-export async function kickstartTask(githubUrl) {
-  if (MOCK_MODE) {
+export async function kickstartTask(githubUrl, headers = {}) {
+  const isMock = headers['X-Mock-Mode'] === 'true' || MOCK_MODE_ENV;
+
+  if (isMock && !headers['X-AI-Provider']) {
     await new Promise(resolve => setTimeout(resolve, 4000));
     return getMockCoding();
   }
 
   return request('/api/task', {
     method: 'POST',
+    headers,
     body: JSON.stringify({ github_url: githubUrl }),
   });
 }
@@ -122,8 +131,10 @@ function getExportFilename(githubUrl) {
   return `reposense-${getRepoSlug(githubUrl)}-${date}.md`;
 }
 
-export async function exportMarkdown(githubUrl) {
-  if (MOCK_MODE) {
+export async function exportMarkdown(githubUrl, headers = {}) {
+  const isMock = headers['X-Mock-Mode'] === 'true' || MOCK_MODE_ENV;
+
+  if (isMock && !headers['X-AI-Provider']) {
     const mockMarkdown = `# RepoSense Analysis\n\nGenerated for: ${githubUrl}\n\n## Overview\n\nThis is a mock export.`;
     const blob = new Blob([mockMarkdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -139,7 +150,10 @@ export async function exportMarkdown(githubUrl) {
 
   const response = await fetch(`${BASE_URL}/api/export/markdown`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      ...headers
+    },
     body: JSON.stringify({ github_url: githubUrl }),
   });
 
@@ -169,10 +183,10 @@ function getMockAnalysis() {
     one_line_summary: "Fast, unopinionated, minimalist web framework for Node.js",
     what_it_does: "Express is a minimal and flexible Node.js web application framework that provides a robust set of features for web and mobile applications. It facilitates the rapid development of Node-based web applications with a thin layer of fundamental web application features.",
     tech_stack: [
-      { name: "JavaScript", category: "Language", color: "#f5a623" },
-      { name: "Node.js", category: "Runtime", color: "#22c98a" },
-      { name: "HTTP", category: "Protocol", color: "#7c6af7" },
-      { name: "Middleware", category: "Pattern", color: "#a78bfa" }
+      { name: "JavaScript", category: "Language", color: "amber" },
+      { name: "Node.js", category: "Runtime", color: "green" },
+      { name: "HTTP", category: "Protocol", color: "blue" },
+      { name: "Middleware", category: "Pattern", color: "purple" }
     ],
     architecture_type: "MVC",
     architecture_overview: "Express follows a middleware-based architecture where requests flow through a chain of middleware functions. Each middleware can modify the request/response objects or end the request-response cycle. The router maps HTTP methods and paths to handler functions.",
@@ -283,5 +297,3 @@ function getMockCoding() {
     bob_modes_used: ["Plan", "Ask", "Code", "Orchestrator"]
   };
 }
-
-// Made with Bob
