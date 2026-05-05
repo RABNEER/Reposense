@@ -249,9 +249,10 @@ const App = () => {
     // CRITICAL FIX: Auto-set mock mode based on keys
     const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
     const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
-    const hasAnyKey = hasGeminiKey || hasBobKey;
-
-    if (hasAnyKey) {
+    
+    if (aiProvider === 'gemini') {
+      localStorage.setItem('mock_mode', 'false');
+    } else if (hasBobKey || hasGeminiKey) {
       localStorage.setItem('mock_mode', 'false');
     } else {
       localStorage.setItem('mock_mode', 'true');
