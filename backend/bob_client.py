@@ -114,12 +114,15 @@ class BobClient:
 def get_ai_client(
     bob_key: str = None,
     gemini_key: str = None,
+    groq_key: str = None,
     provider: str = None,
     mock_mode: str = None,
     bob_base_url: str = None
 ):
+    from groq_client import GROQ_API_KEY
     selected_bob_key = (bob_key if bob_key is not None else BOB_API_KEY) or ""
     selected_gemini_key = (gemini_key if gemini_key is not None else GEMINI_API_KEY) or ""
+    selected_groq_key = (groq_key if groq_key is not None else GROQ_API_KEY) or ""
     selected_provider = (provider or "bob").lower()
     selected_mock = str(mock_mode or "").lower() == "true"
 
@@ -133,6 +136,13 @@ def get_ai_client(
             from gemini_client import GeminiClient
         return GeminiClient(api_key=selected_gemini_key)
 
+    if selected_provider == "groq" and selected_groq_key:
+        try:
+            from backend.groq_client import GroqClient
+        except ImportError:
+            from groq_client import GroqClient
+        return GroqClient(api_key=selected_groq_key)
+
     if selected_bob_key and selected_bob_key != "mock":
         return BobClient(api_key=selected_bob_key, base_url=bob_base_url or BOB_BASE_URL)
 
@@ -142,6 +152,13 @@ def get_ai_client(
         except ImportError:
             from gemini_client import GeminiClient
         return GeminiClient(api_key=selected_gemini_key)
+
+    if selected_groq_key:
+        try:
+            from backend.groq_client import GroqClient
+        except ImportError:
+            from groq_client import GroqClient
+        return GroqClient(api_key=selected_groq_key)
 
     return None
 

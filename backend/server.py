@@ -101,6 +101,7 @@ app.add_middleware(
         "X-AI-Provider",
         "X-Mock-Mode",
         "X-GitHub-Token",
+        "X-Groq-Key",
     ],
     expose_headers=["*"],
     max_age=86400
@@ -179,6 +180,7 @@ def get_request_config(http_request: Request) -> dict:
         "bob_key": headers.get("X-IBM-Bob-Key") or os.getenv("IBM_BOB_API_KEY", ""),
         "bob_base_url": headers.get("X-IBM-Bob-Base-Url") or os.getenv("IBM_BOB_BASE_URL", "https://bob.ibm.com"),
         "gemini_key": headers.get("X-Gemini-Key") or os.getenv("GEMINI_API_KEY", ""),
+        "groq_key": headers.get("X-Groq-Key") or os.getenv("GROQ_API_KEY", ""),
         "github_token": headers.get("X-GitHub-Token") or os.getenv("GITHUB_TOKEN"),
         "provider": headers.get("X-AI-Provider", "bob"),
         "mock": headers.get("X-Mock-Mode", "false")
@@ -199,6 +201,7 @@ def get_configured_client(config: dict):
     return get_ai_client(
         bob_key=config["bob_key"],
         gemini_key=config["gemini_key"],
+        groq_key=config["groq_key"],
         provider=config["provider"],
         mock_mode=config["mock"],
         bob_base_url=config["bob_base_url"]
@@ -243,11 +246,13 @@ async def health_check():
 
     api_key = os.getenv("IBM_BOB_API_KEY", "")
     gemini_key = os.getenv("GEMINI_API_KEY", "")
+    groq_key = os.getenv("GROQ_API_KEY", "")
     return {
         "status": "ok",
         "version": "1.0.0",
         "bob_connected": bool(api_key and api_key != ""),
         "gemini_connected": bool(gemini_key),
+        "groq_connected": bool(groq_key),
         "mock_mode": MOCK_MODE,
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }

@@ -33,6 +33,7 @@ const App = () => {
   const [ibmBobKey, setIbmBobKey] = useState(() => readStoredConfig('ibm_bob_key'));
   const [ibmBobBaseUrl, setIbmBobBaseUrl] = useState(() => readStoredConfig('ibm_bob_base_url', 'https://bob.ibm.com'));
   const [geminiKey, setGeminiKey] = useState(() => readStoredConfig('gemini_key'));
+  const [groqKey, setGroqKey] = useState(() => readStoredConfig('groq_key'));
   const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
   const [mockModeToggle, setMockModeToggle] = useState(() => readStoredConfig('mock_mode', 'true') === 'true');
   const [mockModeManualOverride, setMockModeManualOverride] = useState(false);
@@ -127,6 +128,7 @@ const App = () => {
       setIbmBobKey(localStorage.getItem('ibm_bob_key') || '');
       setIbmBobBaseUrl(localStorage.getItem('ibm_bob_base_url') || 'https://bob.ibm.com');
       setGeminiKey(localStorage.getItem('gemini_key') || '');
+      setGroqKey(localStorage.getItem('groq_key') || '');
       setGithubToken(localStorage.getItem('github_token') || '');
       const stored = localStorage.getItem('mock_mode');
       setMockModeToggle(stored !== null ? stored === 'true' : true);
@@ -138,9 +140,10 @@ const App = () => {
     if (!settingsOpen || mockModeManualOverride) return;
     const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
     const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
-    const hasAnyKey = hasGeminiKey || hasBobKey;
+    const hasGroqKey = groqKey && groqKey.trim().length > 0;
+    const hasAnyKey = hasGeminiKey || hasBobKey || hasGroqKey;
     setMockModeToggle(!hasAnyKey);
-  }, [settingsOpen, geminiKey, ibmBobKey, mockModeManualOverride]);
+  }, [settingsOpen, geminiKey, ibmBobKey, groqKey, mockModeManualOverride]);
 
   // ─── HANDLERS ───
   const normalizeGithubUrl = (value) => {
@@ -244,15 +247,16 @@ const App = () => {
     localStorage.setItem('ibm_bob_key', ibmBobKey.trim());
     localStorage.setItem('ibm_bob_base_url', ibmBobBaseUrl.trim());
     localStorage.setItem('gemini_key', geminiKey.trim());
+    localStorage.setItem('groq_key', groqKey.trim());
     localStorage.setItem('github_token', githubToken.trim());
 
     // CRITICAL FIX: Auto-set mock mode based on keys
     const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
     const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
     
-    if (aiProvider === 'gemini') {
+    if (aiProvider === 'gemini' || aiProvider === 'groq') {
       localStorage.setItem('mock_mode', 'false');
-    } else if (hasBobKey || hasGeminiKey) {
+    } else if (hasBobKey || hasGeminiKey || hasGroqKey) {
       localStorage.setItem('mock_mode', 'false');
     } else {
       localStorage.setItem('mock_mode', 'true');
@@ -301,7 +305,9 @@ const App = () => {
     ? { label: '○ DEMO — Mock', color: 'var(--gold)' }
     : aiProvider === 'gemini'
       ? { label: '● LIVE — Gemini', color: '#2563eb' }
-      : { label: '● LIVE — IBM Bob', color: 'var(--sage)' };
+      : aiProvider === 'groq'
+        ? { label: '● LIVE — Groq', color: '#f59e0b' }
+        : { label: '● LIVE — IBM Bob', color: 'var(--sage)' };
 
   // ─── STYLES ───
   const styles = `
@@ -559,7 +565,8 @@ const App = () => {
           <div className="flex gap-2 mb-5">
             {[
               { id: 'bob', label: 'IBM Bob' },
-              { id: 'gemini', label: 'Gemini' }
+              { id: 'gemini', label: 'Gemini' },
+              { id: 'groq', label: 'Groq' }
             ].map(option => (
               <button
                 key={option.id}
@@ -595,7 +602,7 @@ const App = () => {
                 />
               </div>
             </div>
-          ) : (
+          ) : aiProvider === 'gemini' ? (
             <div className="space-y-3">
               <div>
                 <label className="label block mb-2">Gemini API Key</label>
@@ -614,6 +621,27 @@ const App = () => {
                 rel="noreferrer"
               >
                 Get free key at aistudio.google.com
+              </a>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className="label block mb-2">Groq API Key</label>
+                <input
+                  type="password"
+                  className="settings-input"
+                  placeholder="gsk_..."
+                  value={groqKey}
+                  onChange={(e) => setGroqKey(e.target.value)}
+                />
+              </div>
+              <a
+                className="settings-helper settings-link"
+                href="https://console.groq.com/keys"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Get free key at console.groq.com
               </a>
             </div>
           )}
