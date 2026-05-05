@@ -6,7 +6,13 @@ Your responses are precise, actionable, and grounded in the actual codebase."""
 
 def format_file_tree(file_tree: list, max_files: int = 100) -> str:
     """Format file tree for prompt"""
-    files = [f["path"] for f in file_tree[:max_files]]
+    files = []
+    for f in file_tree[:max_files]:
+        if isinstance(f, dict) and "path" in f:
+            files.append(f["path"])
+        elif isinstance(f, str):
+            files.append(f)
+            
     if len(file_tree) > max_files:
         files.append(f"... and {len(file_tree) - max_files} more files")
     return "\n".join(files)

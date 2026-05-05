@@ -32,6 +32,16 @@ except ImportError:
         get_mock_analyze_response, get_mock_orchestrate_response, get_mock_ask_response
     )
 
+try:
+    from backend.gemini_client import GeminiClient
+except ImportError:
+    from gemini_client import GeminiClient
+
+try:
+    from backend.bob_client import BobClient
+except ImportError:
+    from bob_client import BobClient
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -176,6 +186,16 @@ def get_request_config(http_request: Request) -> dict:
 
 
 def get_configured_client(config: dict):
+    try:
+        from backend.gemini_client import GeminiClient
+    except ImportError:
+        from gemini_client import GeminiClient
+
+    try:
+        from backend.bob_client import BobClient
+    except ImportError:
+        from bob_client import BobClient
+
     return get_ai_client(
         bob_key=config["bob_key"],
         gemini_key=config["gemini_key"],
@@ -211,6 +231,16 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/api/health")
 async def health_check():
+    try:
+        from backend.gemini_client import GeminiClient
+    except ImportError:
+        from gemini_client import GeminiClient
+
+    try:
+        from backend.bob_client import BobClient
+    except ImportError:
+        from bob_client import BobClient
+
     api_key = os.getenv("IBM_BOB_API_KEY", "")
     gemini_key = os.getenv("GEMINI_API_KEY", "")
     return {
@@ -226,27 +256,19 @@ async def health_check():
 @app.post("/api/analyze")
 async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
     try:
+        from backend.gemini_client import GeminiClient
+    except ImportError:
+        from gemini_client import GeminiClient
+
+    try:
+        from backend.bob_client import BobClient
+    except ImportError:
+        from bob_client import BobClient
+
+    try:
         logger.info(f"Analyzing repository: {payload.github_url}")
         config = get_request_config(http_request)
-        gemini_key = config["gemini_key"]
-        bob_key = config["bob_key"]
-        provider = config["provider"]
-        mock_header = config["mock"]
-
-        # Determine if mock mode
-        use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
-
-        # Get correct AI client based on settings
-        if use_mock:
-            ai_client = None
-        elif provider == 'gemini' and gemini_key:
-            from backend.gemini_client import GeminiClient
-            ai_client = GeminiClient(api_key=gemini_key)
-        elif bob_key and bob_key != 'mock':
-            from backend.bob_client import BobClient
-            ai_client = BobClient(api_key=bob_key)
-        else:
-            ai_client = None
+        ai_client = get_configured_client(config)
 
         # Update config with determined client
         config["client"] = ai_client
@@ -281,7 +303,7 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
             raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
         raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
     except (BobAPIError, BobParseError, Exception) as e:
-        logger.error(f"AI provider error: {str(e)}")
+        logger.exception("AI provider error:")
         raise HTTPException(
             status_code=502,
             detail={
@@ -295,27 +317,19 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
 @app.post("/api/ask")
 async def ask_question(payload: AskRequest, http_request: Request):
     try:
+        from backend.gemini_client import GeminiClient
+    except ImportError:
+        from gemini_client import GeminiClient
+
+    try:
+        from backend.bob_client import BobClient
+    except ImportError:
+        from bob_client import BobClient
+
+    try:
         logger.info(f"Question for {payload.github_url}: {payload.question[:50]}...")
         config = get_request_config(http_request)
-        gemini_key = config["gemini_key"]
-        bob_key = config["bob_key"]
-        provider = config["provider"]
-        mock_header = config["mock"]
-
-        # Determine if mock mode
-        use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
-
-        # Get correct AI client based on settings
-        if use_mock:
-            ai_client = None
-        elif provider == 'gemini' and gemini_key:
-            from backend.gemini_client import GeminiClient
-            ai_client = GeminiClient(api_key=gemini_key)
-        elif bob_key and bob_key != 'mock':
-            from backend.bob_client import BobClient
-            ai_client = BobClient(api_key=bob_key)
-        else:
-            ai_client = None
+        ai_client = get_configured_client(config)
 
         # Update config with determined client
         config["client"] = ai_client
@@ -348,34 +362,26 @@ async def ask_question(payload: AskRequest, http_request: Request):
             raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
         raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
     except (BobAPIError, BobParseError, Exception) as e:
-        logger.error(f"AI provider error: {str(e)}")
+        logger.exception("AI provider error:")
         raise HTTPException(status_code=502, detail={"error": "AI provider unavailable", "detail": str(e), "code": 502})
 
 
 @app.post("/api/task")
 async def kickstart_task(payload: TaskRequest, http_request: Request):
     try:
+        from backend.gemini_client import GeminiClient
+    except ImportError:
+        from gemini_client import GeminiClient
+
+    try:
+        from backend.bob_client import BobClient
+    except ImportError:
+        from bob_client import BobClient
+
+    try:
         logger.info(f"Starting orchestration for {payload.github_url}")
         config = get_request_config(http_request)
-        gemini_key = config["gemini_key"]
-        bob_key = config["bob_key"]
-        provider = config["provider"]
-        mock_header = config["mock"]
-
-        # Determine if mock mode
-        use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
-
-        # Get correct AI client based on settings
-        if use_mock:
-            ai_client = None
-        elif provider == 'gemini' and gemini_key:
-            from backend.gemini_client import GeminiClient
-            ai_client = GeminiClient(api_key=gemini_key)
-        elif bob_key and bob_key != 'mock':
-            from backend.bob_client import BobClient
-            ai_client = BobClient(api_key=bob_key)
-        else:
-            ai_client = None
+        ai_client = get_configured_client(config)
 
         # Update config with determined client
         config["client"] = ai_client
@@ -410,34 +416,26 @@ async def kickstart_task(payload: TaskRequest, http_request: Request):
             raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
         raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
     except (BobAPIError, BobParseError, Exception) as e:
-        logger.error(f"AI provider error: {str(e)}")
+        logger.exception("AI provider error:")
         raise HTTPException(status_code=502, detail={"error": "AI provider unavailable", "detail": str(e), "code": 502})
 
 
 @app.post("/api/export/markdown")
 async def export_markdown(payload: ExportRequest, http_request: Request):
     try:
+        from backend.gemini_client import GeminiClient
+    except ImportError:
+        from gemini_client import GeminiClient
+
+    try:
+        from backend.bob_client import BobClient
+    except ImportError:
+        from bob_client import BobClient
+
+    try:
         logger.info(f"Generating markdown export for {payload.github_url}")
         config = get_request_config(http_request)
-        gemini_key = config["gemini_key"]
-        bob_key = config["bob_key"]
-        provider = config["provider"]
-        mock_header = config["mock"]
-
-        # Determine if mock mode
-        use_mock = mock_header.lower() == 'true' and not gemini_key and not (bob_key and bob_key != 'mock')
-
-        # Get correct AI client based on settings
-        if use_mock:
-            ai_client = None
-        elif provider == 'gemini' and gemini_key:
-            from backend.gemini_client import GeminiClient
-            ai_client = GeminiClient(api_key=gemini_key)
-        elif bob_key and bob_key != 'mock':
-            from backend.bob_client import BobClient
-            ai_client = BobClient(api_key=bob_key)
-        else:
-            ai_client = None
+        ai_client = get_configured_client(config)
 
         # Update config with determined client
         config["client"] = ai_client
@@ -481,7 +479,7 @@ async def export_markdown(payload: ExportRequest, http_request: Request):
             raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
         raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
     except (BobAPIError, BobParseError, Exception) as e:
-        logger.error(f"AI provider error: {str(e)}")
+        logger.exception("AI provider error:")
         raise HTTPException(status_code=502, detail={"error": "AI provider unavailable", "detail": str(e), "code": 502})
 
 
