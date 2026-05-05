@@ -4,18 +4,18 @@ You analyze complete repositories with full context. You produce production-read
 
 Your responses are precise, actionable, and grounded in the actual codebase."""
 
-def format_file_tree(file_tree: list, max_files: int = 100) -> str:
-    """Format file tree for prompt"""
-    files = []
-    for f in file_tree[:max_files]:
-        if isinstance(f, dict) and "path" in f:
-            files.append(f["path"])
+def format_file_tree(file_tree):
+    if not file_tree:
+        return "No files available"
+    result = []
+    for f in file_tree[:50]:
+        if isinstance(f, dict):
+            result.append(f.get('path', str(f)))
         elif isinstance(f, str):
-            files.append(f)
-            
-    if len(file_tree) > max_files:
-        files.append(f"... and {len(file_tree) - max_files} more files")
-    return "\n".join(files)
+            result.append(f)
+        else:
+            result.append(str(f))
+    return '\n'.join(result)
 
 def format_key_files(key_files: dict, max_chars: int = 500) -> str:
     """Format key file contents for prompt"""
@@ -30,16 +30,16 @@ def format_key_files(key_files: dict, max_chars: int = 500) -> str:
 def build_analysis_prompt(repo_context: dict) -> str:
     """Build prompt for repository analysis (Plan mode)"""
     
-    file_tree_str = format_file_tree(repo_context["file_tree"])
-    key_files_str = format_key_files(repo_context["key_files"])
+    file_tree_str = format_file_tree(repo_context.get('file_tree', []))
+    key_files_str = format_key_files(repo_context.get('key_files', {}))
     
     prompt = f"""Analyze this GitHub repository and provide a complete onboarding analysis.
 
-Repository: {repo_context['owner']}/{repo_context['repo_name']}
-Description: {repo_context['metadata'].get('description', 'No description')}
-Primary Language: {repo_context['metadata'].get('language', 'Unknown')}
-Stars: {repo_context['metadata'].get('stars', 0)}
-Total Files: {repo_context['total_files']}
+Repository: {repo_context.get('owner', 'unknown')}/{repo_context.get('repo_name', repo_context.get('owner', 'unknown') + '/' + repo_context.get('name', 'repo'))}
+Description: {repo_context.get('metadata', {}).get('description', 'No description')}
+Primary Language: {repo_context.get('metadata', {}).get('language', 'Unknown')}
+Stars: {repo_context.get('metadata', {}).get('stars', 0)}
+Total Files: {repo_context.get('total_files', len(repo_context.get('file_tree', [])))}
 
 FILE TREE (first 100 files):
 {file_tree_str}
@@ -78,8 +78,8 @@ Respond with a JSON object with these exact fields:
   "gotchas": ["string"],
   "estimated_onboarding_minutes": number,
   "bob_modes_used": ["Plan", "Ask", "Code", "Orchestrator"],
-  "file_tree_count": {repo_context['total_files']},
-  "total_files": {repo_context['total_files']},
+  "file_tree_count": {repo_context.get('total_files', len(repo_context.get('file_tree', [])))},
+  "total_files": {repo_context.get('total_files', len(repo_context.get('file_tree', [])))},
   "complexity": "Low|Medium|High"
 }}
 
@@ -90,13 +90,13 @@ Provide complete, realistic data. No placeholders. No empty arrays."""
 def build_issue_prompt(repo_context: dict) -> str:
     """Build prompt for finding a beginner-friendly issue (Ask mode)"""
     
-    file_tree_str = format_file_tree(repo_context["file_tree"], max_files=50)
+    file_tree_str = format_file_tree(repo_context.get('file_tree', []))
     
     prompt = f"""Find ONE specific, meaningful, beginner-friendly issue that a new contributor could work on in this repository.
 
-Repository: {repo_context['owner']}/{repo_context['repo_name']}
-Description: {repo_context['metadata'].get('description', 'No description')}
-Languages: {', '.join(repo_context['languages_detected'])}
+Repository: {repo_context.get('owner', 'unknown')}/{repo_context.get('repo_name', repo_context.get('owner', 'unknown') + '/' + repo_context.get('name', 'repo'))}
+Description: {repo_context.get('metadata', {}).get('description', 'No description')}
+Languages: {', '.join(repo_context.get('languages_detected', []))}
 
 FILE TREE (sample):
 {file_tree_str}
@@ -128,7 +128,7 @@ def build_plan_prompt(repo_context: dict, issue: dict) -> str:
     
     prompt = f"""Create an implementation plan for this issue.
 
-Repository: {repo_context['owner']}/{repo_context['repo_name']}
+Repository: {repo_context.get('owner', 'unknown')}/{repo_context.get('repo_name', repo_context.get('owner', 'unknown') + '/' + repo_context.get('name', 'repo'))}
 
 ISSUE:
 Title: {issue.get('title', 'Unknown')}
@@ -152,12 +152,12 @@ Be specific and actionable."""
 def build_code_prompt(repo_context: dict, issue: dict, plan: dict) -> str:
     """Build prompt for generating code (Code mode)"""
     
-    key_files_str = format_key_files(repo_context["key_files"], max_chars=300)
+    key_files_str = format_key_files(repo_context.get('key_files', {}), max_chars=300)
     
     prompt = f"""Generate actual working code for this issue.
 
-Repository: {repo_context['owner']}/{repo_context['repo_name']}
-Languages: {', '.join(repo_context['languages_detected'])}
+Repository: {repo_context.get('owner', 'unknown')}/{repo_context.get('repo_name', repo_context.get('owner', 'unknown') + '/' + repo_context.get('name', 'repo'))}
+Languages: {', '.join(repo_context.get('languages_detected', []))}
 
 ISSUE: {issue.get('title', 'Unknown')}
 
@@ -219,8 +219,8 @@ Be clear and educational."""
 def build_qa_prompt(repo_context: dict, question: str, history: list) -> str:
     """Build prompt for Q&A (Ask mode)"""
     
-    file_tree_str = format_file_tree(repo_context["file_tree"], max_files=50)
-    key_files_str = format_key_files(repo_context["key_files"], max_chars=400)
+    file_tree_str = format_file_tree(repo_context.get('file_tree', []))
+    key_files_str = format_key_files(repo_context.get('key_files', {}), max_chars=400)
     
     history_str = ""
     if history:
@@ -233,8 +233,8 @@ def build_qa_prompt(repo_context: dict, question: str, history: list) -> str:
     
     prompt = f"""Answer this question about the repository using ONLY information from the repository itself.
 
-Repository: {repo_context['owner']}/{repo_context['repo_name']}
-Description: {repo_context['metadata'].get('description', 'No description')}
+Repository: {repo_context.get('owner', 'unknown')}/{repo_context.get('repo_name', repo_context.get('owner', 'unknown') + '/' + repo_context.get('name', 'repo'))}
+Description: {repo_context.get('metadata', {}).get('description', 'No description')}
 
 FILE TREE (sample):
 {file_tree_str}
@@ -266,15 +266,15 @@ Ground your answer in the actual codebase. Reference real files."""
 def build_doc_prompt(repo_context: dict) -> str:
     """Build prompt for generating markdown documentation (Plan mode)"""
     
-    file_tree_str = format_file_tree(repo_context["file_tree"], max_files=80)
-    key_files_str = format_key_files(repo_context["key_files"], max_chars=400)
+    file_tree_str = format_file_tree(repo_context.get('file_tree', []))
+    key_files_str = format_key_files(repo_context.get('key_files', {}), max_chars=400)
     
     prompt = f"""Generate a complete markdown onboarding document for this repository.
 
-Repository: {repo_context['owner']}/{repo_context['repo_name']}
-Description: {repo_context['metadata'].get('description', 'No description')}
-Languages: {', '.join(repo_context['languages_detected'])}
-Stars: {repo_context['metadata'].get('stars', 0)}
+Repository: {repo_context.get('owner', 'unknown')}/{repo_context.get('repo_name', repo_context.get('owner', 'unknown') + '/' + repo_context.get('name', 'repo'))}
+Description: {repo_context.get('metadata', {}).get('description', 'No description')}
+Languages: {', '.join(repo_context.get('languages_detected', []))}
+Stars: {repo_context.get('metadata', {}).get('stars', 0)}
 
 FILE TREE:
 {file_tree_str}
@@ -284,7 +284,7 @@ KEY FILES:
 
 Generate a comprehensive markdown document with these sections:
 
-# {repo_context['repo_name']} - Developer Onboarding Guide
+# {repo_context.get('repo_name', repo_context.get('owner', 'unknown') + '/' + repo_context.get('name', 'repo'))} - Developer Onboarding Guide
 
 ## Project Overview
 (What it does, why it exists, key features)
