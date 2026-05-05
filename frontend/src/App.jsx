@@ -37,6 +37,16 @@ const App = () => {
   const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
   const [mockModeToggle, setMockModeToggle] = useState(() => readStoredConfig('mock_mode', 'true') === 'true');
   const [mockModeManualOverride, setMockModeManualOverride] = useState(false);
+  const [toast, setToast] = useState(null); // { message, type }
+  
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
 
   const chatEndRef = useRef(null);
   const startTimeRef = useRef(null);
@@ -87,8 +97,15 @@ const App = () => {
             content: `I've analyzed ${data.repo_name || 'the repository'}. Ask me anything about the codebase — architecture, specific files, or how to implement new features.`
           }]);
         } catch (err) {
-          setApiError(err.message || 'Analysis failed');
+          const errMsg = err.message || 'Analysis failed';
+          setApiError(errMsg);
           setAppState('hero');
+          
+          if (errMsg.toLowerCase().includes('not found')) {
+            setToast({ message: 'Repository not found', type: 'error' });
+          } else {
+            setToast({ message: errMsg, type: 'error' });
+          }
         }
       };
 
@@ -253,7 +270,7 @@ const App = () => {
     // CRITICAL FIX: Auto-set mock mode based on keys
     const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
     const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
-    
+
     if (aiProvider === 'gemini' || aiProvider === 'groq') {
       localStorage.setItem('mock_mode', 'false');
     } else if (hasBobKey || hasGeminiKey || hasGroqKey) {
@@ -1275,6 +1292,31 @@ const App = () => {
               </div>
             )}
           </main>
+        </div>
+      )}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          background: toast.type === 'error' ? '#8b3a2a' : 'var(--ink)',
+          color: 'var(--paper)',
+          padding: '12px 24px',
+          fontFamily: 'Geist Mono, monospace',
+          fontSize: '11px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          animation: 'fade-up 0.3s ease-out'
+        }}>
+          <span>{toast.type === 'error' ? '✕' : '✓'}</span>
+          <span>{toast.message}</span>
+          <button 
+            onClick={() => setToast(null)}
+            style={{ marginLeft: '12px', opacity: 0.5, fontSize: '14px' }}
+          >✕</button>
         </div>
       )}
     </>

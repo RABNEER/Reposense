@@ -69,7 +69,7 @@ def fetch_repo_metadata(owner: str, repo: str, token: Optional[str] = None) -> D
         headers["Authorization"] = f"token {token}"
     
     try:
-        response = httpx.get(url, headers=headers, timeout=30.0)
+        response = httpx.get(url, headers=headers, timeout=30.0, follow_redirects=True)
         
         if response.status_code == 404:
             raise GitHubParserError(f"Repository {owner}/{repo} not found")
@@ -145,7 +145,7 @@ def fetch_file_tree(owner: str, repo: str, branch: str, token: Optional[str] = N
     ]
     
     try:
-        response = httpx.get(url, headers=headers, timeout=30.0)
+        response = httpx.get(url, headers=headers, timeout=30.0, follow_redirects=True)
         
         if response.status_code == 404:
             raise GitHubParserError(f"Branch '{branch}' not found in repository")
@@ -297,7 +297,7 @@ def fetch_key_files(owner: str, repo: str, file_tree: List[Dict], token: Optiona
                 continue
             
             url = f"https://api.github.com/repos/{owner}/{repo}/contents/{filepath}"
-            response = httpx.get(url, headers=headers, timeout=15.0)
+            response = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
             
             if response.status_code == 200:
                 content = response.text
