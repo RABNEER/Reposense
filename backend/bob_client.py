@@ -21,12 +21,23 @@ except ImportError:
     import prompts
     from mock_data import get_mock_analyze_response, get_mock_orchestrate_response, get_mock_ask_response
 
+try:
+    from ibm_watsonx_ai.foundation_models import ModelInference
+    from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
+    WATSONX_AVAILABLE = True
+except ImportError:
+    WATSONX_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
-BOB_API_KEY = os.getenv("IBM_BOB_API_KEY", "")
-BOB_BASE_URL = os.getenv("IBM_BOB_BASE_URL", "https://bob.ibm.com")
+# Real IBM Watsonx API Configuration (powers IBM Bob)
+BOB_API_KEY = os.getenv("IBM_BOB_API_KEY", os.getenv("WATSONX_API_KEY", ""))
+WATSONX_PROJECT_ID = os.getenv("WATSONX_PROJECT_ID", "")
+WATSONX_URL = os.getenv("WATSONX_URL", "https://us-south.ml.cloud.ibm.com")
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-MOCK_MODE = BOB_API_KEY == "mock" or BOB_API_KEY == ""
+# Enable mock mode if missing API key OR Watsonx Project ID
+MOCK_MODE = BOB_API_KEY == "mock" or BOB_API_KEY == "" or WATSONX_PROJECT_ID == ""
 
 class BobAPIError(Exception):
     """Exception for IBM Bob API errors"""
@@ -38,12 +49,12 @@ class BobParseError(Exception):
 
 
 class BobClient:
-    """Instance-based IBM Bob client for request-scoped API keys."""
+    """Instance-based IBM Bob client for request-scoped API keys (powered by watsonx.ai)."""
 
     def __init__(self, api_key: str = None, base_url: str = None):
         self.api_key = api_key or BOB_API_KEY
-        self.base_url = base_url or BOB_BASE_URL
-        self.available = bool(self.api_key and self.api_key != "mock")
+        self.base_url = base_url or WATSONX_URL
+        self.available = bool(self.api_key and self.api_key != "mock" and WATSONX_PROJECT_ID)
 
     def analyze(self, repo_context: Dict) -> Dict:
         logger.info(f"Analyzing repository with IBM Bob: {repo_context['repo_name']}")
@@ -144,7 +155,7 @@ def get_ai_client(
         return GroqClient(api_key=selected_groq_key)
 
     if selected_bob_key and selected_bob_key != "mock":
-        return BobClient(api_key=selected_bob_key, base_url=bob_base_url or BOB_BASE_URL)
+        return BobClient(api_key=selected_bob_key, base_url=bob_base_url or WATSONX_URL)
 
     if selected_gemini_key:
         try:
@@ -199,7 +210,6 @@ def parse_json_response(raw: str) -> Dict:
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=2, min=2, max=8),
-    retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
     reraise=True
 )
 def _call(
@@ -210,7 +220,7 @@ def _call(
     base_url: str = None
 ) -> str:
     """
-    Make a call to IBM Bob API.
+    Make a call to IBM watsonx.ai (IBM Bob engine).
     
     Args:
         prompt: The user prompt
@@ -221,7 +231,7 @@ def _call(
     Raises: BobAPIError on API errors
     """
     selected_api_key = api_key if api_key is not None else BOB_API_KEY
-    selected_base_url = base_url or BOB_BASE_URL
+    selected_base_url = base_url or WATSONX_URL
 
     if not api_key and MOCK_MODE:
         logger.info(f"MOCK MODE: Simulating {mode} mode call")
@@ -229,64 +239,54 @@ def _call(
         return get_mock_response(mode)
     
     if not selected_api_key or selected_api_key == "mock":
-        raise BobAPIError("IBM_BOB_API_KEY not configured")
+        raise BobAPIError("IBM_BOB_API_KEY (Watsonx API Key) not configured")
+        
+    if not WATSONX_PROJECT_ID:
+        raise BobAPIError("WATSONX_PROJECT_ID not configured")
+        
+    if not WATSONX_AVAILABLE:
+        raise BobAPIError("ibm-watsonx-ai SDK not installed. Please pip install ibm-watsonx-ai")
     
     if not system:
         system = prompts.SYSTEM_PROMPT
-    
-    url = f"{selected_base_url}/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {selected_api_key}",
-        "Content-Type": "application/json",
-        "X-Bob-Mode": mode
+        
+    credentials = {
+        "url": selected_base_url,
+        "apikey": selected_api_key
     }
     
-    body = {
-        "model": "ibm-bob-v1",
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 4000,
-        "temperature": 0.1
+    # We use meta-llama/llama-3-3-70b-instruct as the underlying IBM Bob reasoning engine 
+    # executed genuinely on IBM Watsonx infrastructure.
+    model_id = "meta-llama/llama-3-3-70b-instruct" 
+    
+    parameters = {
+        GenParams.DECODING_METHOD: "greedy",
+        GenParams.MAX_NEW_TOKENS: 4000,
+        GenParams.TEMPERATURE: 0.1,
     }
+    
+    # Format the prompt for Llama 3 Chat Template to ensure correct behavior
+    formatted_prompt = f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
     
     try:
-        response = httpx.post(url, json=body, headers=headers, timeout=120.0)
+        model = ModelInference(
+            model_id=model_id, 
+            params=parameters, 
+            credentials=credentials,
+            project_id=WATSONX_PROJECT_ID
+        )
         
-        if response.status_code == 429:
-            retry_after = int(response.headers.get("Retry-After", 5))
-            logger.warning(f"Rate limited, waiting {retry_after}s")
-            time.sleep(retry_after)
-            raise httpx.NetworkError("Rate limited, retrying")
+        # watsonx.ai handles retries internally but we wrap it just in case
+        response_text = model.generate_text(prompt=formatted_prompt)
         
-        if response.status_code >= 500:
-            logger.error(f"Bob API server error: {response.status_code}")
-            raise httpx.NetworkError(f"Server error: {response.status_code}")
+        if not response_text:
+            raise BobAPIError("Empty response from watsonx.ai API")
+            
+        return response_text
         
-        if response.status_code >= 400:
-            error_body = response.text
-            raise BobAPIError(f"Bob API error {response.status_code}: {error_body}")
-        
-        data = response.json()
-        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        
-        if not content:
-            raise BobAPIError("Empty response from Bob API")
-        
-        return content
-        
-    except httpx.TimeoutException:
-        logger.error("Bob API timeout")
-        raise BobAPIError("IBM Bob request timed out")
-    except httpx.RequestError as e:
-        logger.error(f"Bob API request error: {str(e)}")
-        raise BobAPIError(f"Network error: {str(e)}")
     except Exception as e:
-        if isinstance(e, (BobAPIError, httpx.NetworkError)):
-            raise
-        logger.error(f"Unexpected error calling Bob: {str(e)}")
-        raise BobAPIError(f"Unexpected error: {str(e)}")
+        logger.error(f"watsonx.ai API request error: {str(e)}")
+        raise BobAPIError(f"IBM Watsonx API error: {str(e)}")
 
 def analyze(repo_context: Dict) -> Dict:
     """
