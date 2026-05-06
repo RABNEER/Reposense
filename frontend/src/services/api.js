@@ -20,8 +20,10 @@ function getConfigHeaders() {
 
   return {
     'Content-Type': 'application/json',
+    'X-Watsonx-Key': getStoredValue('watsonx_key') || getStoredValue('ibm_bob_key'),
+    'X-Watsonx-Project-Id': getStoredValue('watsonx_project_id'),
     'X-IBM-Bob-Key': getStoredValue('ibm_bob_key'),
-    'X-IBM-Bob-Base-Url': getStoredValue('ibm_bob_base_url', 'https://bob.ibm.com'),
+    'X-IBM-Bob-Base-Url': getStoredValue('ibm_bob_base_url', 'https://us-south.ml.cloud.ibm.com'),
     'X-Gemini-Key': getStoredValue('gemini_key'),
     'X-Groq-Key': getStoredValue('groq_key'),
     'X-GitHub-Token': getStoredValue('github_token'),

@@ -102,6 +102,8 @@ app.add_middleware(
         "X-Mock-Mode",
         "X-GitHub-Token",
         "X-Groq-Key",
+        "X-Watsonx-Key",
+        "X-Watsonx-Project-Id",
     ],
     expose_headers=["*"],
     max_age=86400
@@ -177,8 +179,9 @@ class ErrorResponse(BaseModel):
 def get_request_config(http_request: Request) -> dict:
     headers = http_request.headers
     return {
-        "bob_key": headers.get("X-IBM-Bob-Key") or os.getenv("IBM_BOB_API_KEY", ""),
-        "bob_base_url": headers.get("X-IBM-Bob-Base-Url") or os.getenv("IBM_BOB_BASE_URL", "https://bob.ibm.com"),
+        "bob_key": headers.get("X-Watsonx-Key") or headers.get("X-IBM-Bob-Key") or os.getenv("WATSONX_API_KEY") or os.getenv("IBM_BOB_API_KEY", ""),
+        "bob_base_url": headers.get("X-IBM-Bob-Base-Url") or os.getenv("WATSONX_URL") or os.getenv("IBM_BOB_BASE_URL", "https://us-south.ml.cloud.ibm.com"),
+        "watsonx_project_id": headers.get("X-Watsonx-Project-Id") or os.getenv("WATSONX_PROJECT_ID", ""),
         "gemini_key": headers.get("X-Gemini-Key") or os.getenv("GEMINI_API_KEY", ""),
         "groq_key": headers.get("X-Groq-Key") or os.getenv("GROQ_API_KEY", ""),
         "github_token": headers.get("X-GitHub-Token") or os.getenv("GITHUB_TOKEN"),
@@ -244,13 +247,19 @@ async def health_check():
     except ImportError:
         from bob_client import BobClient
 
-    api_key = os.getenv("IBM_BOB_API_KEY", "")
+    bob_key = os.getenv("WATSONX_API_KEY") or os.getenv("IBM_BOB_API_KEY", "")
+    project_id = os.getenv("WATSONX_PROJECT_ID", "")
     gemini_key = os.getenv("GEMINI_API_KEY", "")
     groq_key = os.getenv("GROQ_API_KEY", "")
+    
+    from bob_client import WATSONX_AVAILABLE
+    
     return {
         "status": "ok",
-        "version": "1.0.0",
-        "bob_connected": bool(api_key and api_key != ""),
+        "version": "1.1.0",
+        "bob_connected": bool(bob_key and project_id),
+        "watsonx_ready": WATSONX_AVAILABLE,
+        "watsonx_project_id": bool(project_id),
         "gemini_connected": bool(gemini_key),
         "groq_connected": bool(groq_key),
         "mock_mode": MOCK_MODE,
