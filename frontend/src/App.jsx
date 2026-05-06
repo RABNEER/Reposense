@@ -36,8 +36,6 @@ const App = () => {
   const [groqKey, setGroqKey] = useState(() => readStoredConfig('groq_key'));
   const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
   const [mockModeToggle, setMockModeToggle] = useState(() => readStoredConfig('mock_mode', 'true') === 'true');
-  const [watsonxKey, setWatsonxKey] = useState(() => readStoredConfig('watsonx_key') || readStoredConfig('ibm_bob_key'));
-  const [watsonxProjectId, setWatsonxProjectId] = useState(() => readStoredConfig('watsonx_project_id'));
   const [mockModeManualOverride, setMockModeManualOverride] = useState(false);
   const [toast, setToast] = useState(null); // { message, type }
   
@@ -145,9 +143,7 @@ const App = () => {
     if (settingsOpen) {
       setAiProvider(localStorage.getItem('ai_provider') || 'bob');
       setIbmBobKey(localStorage.getItem('ibm_bob_key') || '');
-      setWatsonxKey(localStorage.getItem('watsonx_key') || localStorage.getItem('ibm_bob_key') || '');
-      setWatsonxProjectId(localStorage.getItem('watsonx_project_id') || '');
-      setIbmBobBaseUrl(localStorage.getItem('ibm_bob_base_url') || 'https://us-south.ml.cloud.ibm.com');
+      setIbmBobBaseUrl(localStorage.getItem('ibm_bob_base_url') || 'https://bob.ibm.com');
       setGeminiKey(localStorage.getItem('gemini_key') || '');
       setGroqKey(localStorage.getItem('groq_key') || '');
       setGithubToken(localStorage.getItem('github_token') || '');
@@ -158,12 +154,13 @@ const App = () => {
   }, [settingsOpen]);
 
   useEffect(() => {
-    const hasBobKey = (ibmBobKey && ibmBobKey.trim().length > 0) || (watsonxKey && watsonxKey.trim().length > 0);
-    const hasProjectId = watsonxProjectId && watsonxProjectId.trim().length > 0;
+    if (!settingsOpen || mockModeManualOverride) return;
+    const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
+    const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
     const hasGroqKey = groqKey && groqKey.trim().length > 0;
-    const hasAnyKey = hasGeminiKey || (hasBobKey && hasProjectId) || hasGroqKey;
+    const hasAnyKey = hasGeminiKey || hasBobKey || hasGroqKey;
     setMockModeToggle(!hasAnyKey);
-  }, [settingsOpen, geminiKey, ibmBobKey, watsonxKey, watsonxProjectId, groqKey, mockModeManualOverride]);
+  }, [settingsOpen, geminiKey, ibmBobKey, groqKey, mockModeManualOverride]);
 
   // ─── HANDLERS ───
   const normalizeGithubUrl = (value) => {
@@ -263,9 +260,8 @@ const App = () => {
   };
 
   const handleSaveSettings = () => {
-    localStorage.setItem('ibm_bob_key', watsonxKey.trim());
-    localStorage.setItem('watsonx_key', watsonxKey.trim());
-    localStorage.setItem('watsonx_project_id', watsonxProjectId.trim());
+    localStorage.setItem('ai_provider', aiProvider);
+    localStorage.setItem('ibm_bob_key', ibmBobKey.trim());
     localStorage.setItem('ibm_bob_base_url', ibmBobBaseUrl.trim());
     localStorage.setItem('gemini_key', geminiKey.trim());
     localStorage.setItem('groq_key', groqKey.trim());
@@ -273,15 +269,11 @@ const App = () => {
 
     // CRITICAL FIX: Auto-set mock mode based on keys
     const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
-    const hasBobKey = (watsonxKey && watsonxKey.trim().length > 0) || (ibmBobKey && ibmBobKey.trim().length > 0);
-    const hasProjectId = watsonxProjectId && watsonxProjectId.trim().length > 0;
-    const hasGroqKey = groqKey && groqKey.trim().length > 0;
+    const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
 
-    if (aiProvider === 'gemini' && hasGeminiKey) {
+    if (aiProvider === 'gemini' || aiProvider === 'groq') {
       localStorage.setItem('mock_mode', 'false');
-    } else if (aiProvider === 'groq' && hasGroqKey) {
-      localStorage.setItem('mock_mode', 'false');
-    } else if (aiProvider === 'bob' && hasBobKey && hasProjectId) {
+    } else if (hasBobKey || hasGeminiKey || hasGroqKey) {
       localStorage.setItem('mock_mode', 'false');
     } else {
       localStorage.setItem('mock_mode', 'true');
@@ -332,7 +324,7 @@ const App = () => {
       ? { label: '● LIVE — Gemini', color: '#2563eb' }
       : aiProvider === 'groq'
         ? { label: '● LIVE — Groq', color: '#f59e0b' }
-        : { label: '● LIVE — IBM Watsonx', color: 'var(--sage)' };
+        : { label: '● LIVE — IBM Bob', color: 'var(--sage)' };
 
   // ─── STYLES ───
   const styles = `
@@ -607,31 +599,21 @@ const App = () => {
           {aiProvider === 'bob' ? (
             <div className="space-y-4">
               <div>
-                <label className="label block mb-2">Watsonx API Key</label>
+                <label className="label block mb-2">IBM Bob API Key</label>
                 <input
                   type="password"
                   className="settings-input"
-                  placeholder="IAM API Key..."
-                  value={watsonxKey}
-                  onChange={(e) => setWatsonxKey(e.target.value)}
+                  placeholder="bob_prod_xxx..."
+                  value={ibmBobKey}
+                  onChange={(e) => setIbmBobKey(e.target.value)}
                 />
               </div>
               <div>
-                <label className="label block mb-2">Watsonx Project ID</label>
+                <label className="label block mb-2">IBM Bob Base URL</label>
                 <input
                   type="text"
                   className="settings-input"
-                  placeholder="e.g. 8bde8ee4-..."
-                  value={watsonxProjectId}
-                  onChange={(e) => setWatsonxProjectId(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label block mb-2">Watsonx URL</label>
-                <input
-                  type="text"
-                  className="settings-input"
-                  placeholder="https://us-south.ml.cloud.ibm.com"
+                  placeholder="https://bob.ibm.com"
                   value={ibmBobBaseUrl}
                   onChange={(e) => setIbmBobBaseUrl(e.target.value)}
                 />

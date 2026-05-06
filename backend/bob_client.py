@@ -51,40 +51,39 @@ class BobParseError(Exception):
 class BobClient:
     """Instance-based IBM Bob client for request-scoped API keys (powered by watsonx.ai)."""
 
-    def __init__(self, api_key: str = None, base_url: str = None, project_id: str = None):
+    def __init__(self, api_key: str = None, base_url: str = None):
         self.api_key = api_key or BOB_API_KEY
         self.base_url = base_url or WATSONX_URL
-        self.project_id = project_id or WATSONX_PROJECT_ID
-        self.available = bool(self.api_key and self.api_key != "mock" and self.project_id)
+        self.available = bool(self.api_key and self.api_key != "mock" and WATSONX_PROJECT_ID)
 
     def analyze(self, repo_context: Dict) -> Dict:
         logger.info(f"Analyzing repository with IBM Bob: {repo_context['repo_name']}")
         prompt = prompts.build_analysis_prompt(repo_context)
-        raw_response = _call(prompt, mode="plan", api_key=self.api_key, base_url=self.base_url, project_id=self.project_id)
+        raw_response = _call(prompt, mode="plan", api_key=self.api_key, base_url=self.base_url)
         return parse_json_response(raw_response)
 
     def find_issue(self, repo_context: Dict) -> Dict:
         logger.info(f"Finding issue with IBM Bob for {repo_context['repo_name']}")
         prompt = prompts.build_issue_prompt(repo_context)
-        raw_response = _call(prompt, mode="ask", api_key=self.api_key, base_url=self.base_url, project_id=self.project_id)
+        raw_response = _call(prompt, mode="ask", api_key=self.api_key, base_url=self.base_url)
         return parse_json_response(raw_response)
 
     def plan_solution(self, repo_context: Dict, issue: Dict) -> Dict:
         logger.info(f"Planning solution with IBM Bob for: {issue.get('title', 'Unknown')}")
         prompt = prompts.build_plan_prompt(repo_context, issue)
-        raw_response = _call(prompt, mode="plan", api_key=self.api_key, base_url=self.base_url, project_id=self.project_id)
+        raw_response = _call(prompt, mode="plan", api_key=self.api_key, base_url=self.base_url)
         return parse_json_response(raw_response)
 
     def generate_code(self, repo_context: Dict, issue: Dict, plan: Dict) -> Dict:
         logger.info("Generating code changes with IBM Bob")
         prompt = prompts.build_code_prompt(repo_context, issue, plan)
-        raw_response = _call(prompt, mode="code", api_key=self.api_key, base_url=self.base_url, project_id=self.project_id)
+        raw_response = _call(prompt, mode="code", api_key=self.api_key, base_url=self.base_url)
         return parse_json_response(raw_response)
 
     def explain_changes(self, changes: Dict) -> Dict:
         logger.info("Generating change explanation with IBM Bob")
         prompt = prompts.build_explain_prompt(changes)
-        raw_response = _call(prompt, mode="ask", api_key=self.api_key, base_url=self.base_url, project_id=self.project_id)
+        raw_response = _call(prompt, mode="ask", api_key=self.api_key, base_url=self.base_url)
         return parse_json_response(raw_response)
 
     def orchestrate(self, repo_context: Dict) -> Dict:
@@ -114,13 +113,13 @@ class BobClient:
     def ask(self, repo_context: Dict, question: str, history: List[Dict]) -> Dict:
         logger.info(f"Answering question with IBM Bob for {repo_context['repo_name']}")
         prompt = prompts.build_qa_prompt(repo_context, question, history)
-        raw_response = _call(prompt, mode="ask", api_key=self.api_key, base_url=self.base_url, project_id=self.project_id)
+        raw_response = _call(prompt, mode="ask", api_key=self.api_key, base_url=self.base_url)
         return parse_json_response(raw_response)
 
     def generate_doc(self, repo_context: Dict) -> str:
         logger.info(f"Generating documentation with IBM Bob for {repo_context['repo_name']}")
         prompt = prompts.build_doc_prompt(repo_context)
-        return _call(prompt, mode="plan", api_key=self.api_key, base_url=self.base_url, project_id=self.project_id)
+        return _call(prompt, mode="plan", api_key=self.api_key, base_url=self.base_url)
 
 
 def get_ai_client(
@@ -129,8 +128,7 @@ def get_ai_client(
     groq_key: str = None,
     provider: str = None,
     mock_mode: str = None,
-    bob_base_url: str = None,
-    watsonx_project_id: str = None
+    bob_base_url: str = None
 ):
     from groq_client import GROQ_API_KEY
     selected_bob_key = (bob_key if bob_key is not None else BOB_API_KEY) or ""
@@ -157,11 +155,7 @@ def get_ai_client(
         return GroqClient(api_key=selected_groq_key)
 
     if selected_bob_key and selected_bob_key != "mock":
-        return BobClient(
-            api_key=selected_bob_key, 
-            base_url=bob_base_url or WATSONX_URL,
-            project_id=watsonx_project_id or WATSONX_PROJECT_ID
-        )
+        return BobClient(api_key=selected_bob_key, base_url=bob_base_url or WATSONX_URL)
 
     if selected_gemini_key:
         try:
@@ -223,8 +217,7 @@ def _call(
     mode: str = "plan",
     system: Optional[str] = None,
     api_key: str = None,
-    base_url: str = None,
-    project_id: str = None
+    base_url: str = None
 ) -> str:
     """
     Make a call to IBM watsonx.ai (IBM Bob engine).
@@ -239,7 +232,6 @@ def _call(
     """
     selected_api_key = api_key if api_key is not None else BOB_API_KEY
     selected_base_url = base_url or WATSONX_URL
-    selected_project_id = project_id or WATSONX_PROJECT_ID
 
     if not api_key and MOCK_MODE:
         logger.info(f"MOCK MODE: Simulating {mode} mode call")
@@ -249,7 +241,7 @@ def _call(
     if not selected_api_key or selected_api_key == "mock":
         raise BobAPIError("IBM_BOB_API_KEY (Watsonx API Key) not configured")
         
-    if not selected_project_id:
+    if not WATSONX_PROJECT_ID:
         raise BobAPIError("WATSONX_PROJECT_ID not configured")
         
     if not WATSONX_AVAILABLE:
@@ -281,7 +273,7 @@ def _call(
             model_id=model_id, 
             params=parameters, 
             credentials=credentials,
-            project_id=selected_project_id
+            project_id=WATSONX_PROJECT_ID
         )
         
         # watsonx.ai handles retries internally but we wrap it just in case
