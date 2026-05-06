@@ -18,10 +18,10 @@ class ConfigError(Exception):
 class Config:
     """Application configuration"""
     
-    # IBM Bob API Configuration
-    IBM_BOB_API_KEY: str = os.getenv("IBM_BOB_API_KEY", "")
-    IBM_BOB_BASE_URL: str = os.getenv("IBM_BOB_BASE_URL", "https://api.ibm.com/bob/v1")
-    IBM_BOB_API_URL: str = os.getenv("IBM_BOB_API_URL", os.getenv("IBM_BOB_BASE_URL", "https://api.ibm.com/bob/v1"))
+    # IBM Watsonx.ai Configuration
+    WATSONX_API_KEY: str = os.getenv("WATSONX_API_KEY", "")
+    WATSONX_URL: str = os.getenv("WATSONX_URL", "https://us-south.ml.cloud.ibm.com")
+    WATSONX_PROJECT_ID: str = os.getenv("WATSONX_PROJECT_ID", "")
     IBM_BOB_TIMEOUT: float = float(os.getenv("IBM_BOB_TIMEOUT", "60"))
     IBM_BOB_MAX_RETRIES: int = int(os.getenv("IBM_BOB_MAX_RETRIES", "3"))
     
@@ -55,15 +55,20 @@ class Config:
         Validate that all required configuration is present
         Raises ConfigError if critical configuration is missing
         """
-        if not cls.IBM_BOB_API_KEY:
+        if not cls.WATSONX_API_KEY:
             raise ConfigError(
-                "IBM_BOB_API_KEY environment variable is required. "
+                "WATSONX_API_KEY environment variable is required. "
                 "Set it in your .env file or use 'mock' for development."
             )
         
-        if cls.IBM_BOB_API_KEY != "mock" and not cls.IBM_BOB_BASE_URL:
+        if cls.WATSONX_API_KEY != "mock" and not cls.WATSONX_URL:
             raise ConfigError(
-                "IBM_BOB_BASE_URL environment variable is required when using real API key"
+                "WATSONX_URL environment variable is required when using real API key"
+            )
+            
+        if cls.WATSONX_API_KEY != "mock" and not cls.WATSONX_PROJECT_ID:
+            raise ConfigError(
+                "WATSONX_PROJECT_ID environment variable is required when using real API key"
             )
         
         if cls.MAX_FILES_TO_READ < 1:
@@ -80,8 +85,8 @@ class Config:
     
     @classmethod
     def is_mock_mode(cls) -> bool:
-        """Check if running in mock mode (no real IBM Bob API calls)"""
-        return cls.IBM_BOB_API_KEY == "mock"
+        """Check if running in mock mode (no real Watsonx API calls)"""
+        return cls.WATSONX_API_KEY == "mock"
     
     @classmethod
     def get_github_headers(cls) -> dict[str, str]:
