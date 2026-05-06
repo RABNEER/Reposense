@@ -29,10 +29,9 @@ const App = () => {
   const [checkedSteps, setCheckedSteps] = useState(new Set());
   const [activeMode, setActiveMode] = useState(-1);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [aiProvider, setAiProvider] = useState(() => readStoredConfig('ai_provider', 'watsonx'));
-  const [ibmBobKey, setIbmBobKey] = useState(() => readStoredConfig('watsonx_api_key'));
-  const [ibmBobBaseUrl, setIbmBobBaseUrl] = useState(() => readStoredConfig('watsonx_url', 'https://us-south.ml.cloud.ibm.com'));
-  const [ibmWatsonxProjectId, setIbmWatsonxProjectId] = useState(() => readStoredConfig('watsonx_project_id'));
+  const [aiProvider, setAiProvider] = useState(() => readStoredConfig('ai_provider', 'bob'));
+  const [ibmBobKey, setIbmBobKey] = useState(() => readStoredConfig('ibm_bob_key'));
+  const [ibmBobBaseUrl, setIbmBobBaseUrl] = useState(() => readStoredConfig('ibm_bob_base_url', 'https://bob.ibm.com'));
   const [geminiKey, setGeminiKey] = useState(() => readStoredConfig('gemini_key'));
   const [groqKey, setGroqKey] = useState(() => readStoredConfig('groq_key'));
   const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
@@ -54,15 +53,15 @@ const App = () => {
 
   // ─── CONSTANTS ───
   const steps = [
-    { label: "Watsonx.ai · Fetching repository structure", mode: null },
-    { label: "Watsonx.ai · Plan Mode — Mapping architecture", mode: "Plan" },
-    { label: "Watsonx.ai · Ask Mode — Analyzing data flow", mode: "Ask" },
-    { label: "Watsonx.ai · Code Mode — Identifying quick wins", mode: "Code" },
-    { label: "Watsonx.ai · Orchestrator — Generating guide", mode: "Orchestrator" }
+    { label: "Bob · Fetching repository structure", mode: null },
+    { label: "Bob · Plan Mode — Mapping architecture", mode: "Plan" },
+    { label: "Bob · Ask Mode — Analyzing data flow", mode: "Ask" },
+    { label: "Bob · Code Mode — Identifying quick wins", mode: "Code" },
+    { label: "Bob · Orchestrator — Generating guide", mode: "Orchestrator" }
   ];
 
   const tips = [
-    "IBM Watsonx.ai analyzes full repo context, not just top-level files.",
+    "IBM Bob analyzes full repo context, not just top-level files.",
     "Try asking 'How do I add a new feature?' in the chat.",
     "The coding mode finds small, impactful tasks for your first PR.",
     "Orchestrator mode chains multiple AI models for better accuracy."
@@ -142,10 +141,9 @@ const App = () => {
 
   useEffect(() => {
     if (settingsOpen) {
-      setAiProvider(localStorage.getItem('ai_provider') || 'watsonx');
-      setIbmBobKey(localStorage.getItem('watsonx_api_key') || '');
-      setIbmWatsonxProjectId(localStorage.getItem('watsonx_project_id') || '');
-      setIbmBobBaseUrl(localStorage.getItem('watsonx_url') || 'https://us-south.ml.cloud.ibm.com');
+      setAiProvider(localStorage.getItem('ai_provider') || 'bob');
+      setIbmBobKey(localStorage.getItem('ibm_bob_key') || '');
+      setIbmBobBaseUrl(localStorage.getItem('ibm_bob_base_url') || 'https://bob.ibm.com');
       setGeminiKey(localStorage.getItem('gemini_key') || '');
       setGroqKey(localStorage.getItem('groq_key') || '');
       setGithubToken(localStorage.getItem('github_token') || '');
@@ -263,9 +261,8 @@ const App = () => {
 
   const handleSaveSettings = () => {
     localStorage.setItem('ai_provider', aiProvider);
-    localStorage.setItem('watsonx_api_key', ibmBobKey.trim());
-    localStorage.setItem('watsonx_project_id', ibmWatsonxProjectId.trim());
-    localStorage.setItem('watsonx_url', ibmBobBaseUrl.trim());
+    localStorage.setItem('ibm_bob_key', ibmBobKey.trim());
+    localStorage.setItem('ibm_bob_base_url', ibmBobBaseUrl.trim());
     localStorage.setItem('gemini_key', geminiKey.trim());
     localStorage.setItem('groq_key', groqKey.trim());
     localStorage.setItem('github_token', githubToken.trim());
@@ -327,7 +324,7 @@ const App = () => {
       ? { label: '● LIVE — Gemini', color: '#2563eb' }
       : aiProvider === 'groq'
         ? { label: '● LIVE — Groq', color: '#f59e0b' }
-        : { label: '● LIVE — Watsonx.ai', color: 'var(--sage)' };
+        : { label: '● LIVE — IBM Bob', color: 'var(--sage)' };
 
   // ─── STYLES ───
   const styles = `
@@ -547,7 +544,7 @@ const App = () => {
           {apiStatus.label}
         </div>
         <div className="hidden md:block label border border-[var(--border)] px-[14px] py-[6px] leading-none text-[10px] text-[var(--ink)] font-medium">
-          Powered by IBM Watsonx.ai
+          Powered by IBM Bob
         </div>
         <button
           type="button"
@@ -584,7 +581,7 @@ const App = () => {
           <label className="label block mb-3">AI Provider</label>
           <div className="flex gap-2 mb-5">
             {[
-              { id: 'watsonx', label: 'IBM Watsonx.ai' },
+              { id: 'bob', label: 'IBM Bob' },
               { id: 'gemini', label: 'Gemini' },
               { id: 'groq', label: 'Groq' }
             ].map(option => (
@@ -599,34 +596,24 @@ const App = () => {
             ))}
           </div>
 
-          {aiProvider === 'watsonx' ? (
+          {aiProvider === 'bob' ? (
             <div className="space-y-4">
               <div>
-                <label className="label block mb-2">Watsonx API Key</label>
+                <label className="label block mb-2">IBM Bob API Key</label>
                 <input
                   type="password"
                   className="settings-input"
-                  placeholder="IBM Cloud API Key..."
+                  placeholder="bob_prod_xxx..."
                   value={ibmBobKey}
                   onChange={(e) => setIbmBobKey(e.target.value)}
                 />
               </div>
               <div>
-                <label className="label block mb-2">Watsonx Project ID</label>
-                <input
-                  type="password"
-                  className="settings-input"
-                  placeholder="Project ID..."
-                  value={ibmWatsonxProjectId}
-                  onChange={(e) => setIbmWatsonxProjectId(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label block mb-2">Watsonx URL</label>
+                <label className="label block mb-2">IBM Bob Base URL</label>
                 <input
                   type="text"
                   className="settings-input"
-                  placeholder="https://us-south.ml.cloud.ibm.com"
+                  placeholder="https://bob.ibm.com"
                   value={ibmBobBaseUrl}
                   onChange={(e) => setIbmBobBaseUrl(e.target.value)}
                 />
@@ -766,7 +753,7 @@ const App = () => {
             </div>
 
             <div className="flex items-center gap-2 mb-4 animate-fade-up stagger-1.5">
-              <span className="font-serif text-[16px] text-[var(--accent)] font-bold">Made with IBM Watsonx.ai</span>
+              <span className="font-serif text-[16px] text-[var(--accent)] font-bold">Made with IBM Bob</span>
             </div>
 
             <h1 className="font-serif hero-h1 text-4xl sm:text-5xl md:text-7xl text-[var(--ink)] mb-[28px] animate-fade-up stagger-2">
@@ -776,7 +763,7 @@ const App = () => {
             </h1>
 
             <p className="text-[12px] text-[var(--muted)] font-normal leading-[1.8] max-w-[380px] mx-auto mb-[40px] animate-fade-up stagger-3">
-              <strong>Watsonx.ai</strong> reads every file in your repository <br />
+              <strong>IBM Bob</strong> reads every file in your repository <br />
               — not just the README. Full SDLC context with 4 AI modes.
             </p>
 
@@ -830,8 +817,8 @@ const App = () => {
                 <div className="label mt-1">avg onboarding</div>
               </div>
               <div className="p-4 sm:p-5 text-left border-b sm:border-b-0 sm:border-r border-[var(--border)]">
-                <div className="font-serif text-[28px] text-[var(--ink)]">4</div>
-                <div className="label mt-1">Watsonx modes used</div>
+                <div className="font-serif text-[28px] text-[var(--ink)] leading-none">4</div>
+                <div className="label mt-1">Bob modes used</div>
               </div>
               <div className="p-4 sm:p-5 text-left">
                 <div className="font-serif text-[28px] text-[var(--rust)] leading-none">100%</div>
@@ -849,7 +836,7 @@ const App = () => {
           <Navbar />
           <main className="max-w-[400px] w-full text-center mt-20 px-5 sm:px-10">
             <div className="label border border-[var(--gold)] text-[var(--gold)] px-4 py-[6px] mb-8 inline-block">
-              IBM Watsonx.ai analyzing
+              IBM Bob analyzing
             </div>
 
             <div className="mb-10 flex justify-center">
@@ -861,7 +848,7 @@ const App = () => {
               </svg>
             </div>
 
-            <h2 className="font-serif text-[24px] text-[var(--ink)] mb-10">IBM Watsonx.ai is reading your codebase...</h2>
+            <h2 className="font-serif text-[24px] text-[var(--ink)] mb-10">IBM Bob is reading your codebase...</h2>
 
             <div className="space-y-4 mb-10 text-left">
               {steps.map((step, idx) => (
@@ -904,7 +891,7 @@ const App = () => {
             </div>
             <div className="hidden md:flex flex-col items-end gap-1">
               <div className="text-[10px] text-[var(--muted)] font-medium">
-                Watsonx.ai analyzed {parseRepoName(repoUrl)} using {analysis?.bob_modes_used?.length || 4} modes
+                Bob analyzed {parseRepoName(repoUrl)} using {analysis?.bob_modes_used?.length || 4} modes
               </div>
               <div className="flex gap-2">
                 {bobModesUsed.map(m => <ModePill key={m} mode={m} />)}
@@ -917,7 +904,7 @@ const App = () => {
               {[
                 { label: 'Overview', id: 'overview' },
                 { label: 'Start Coding', id: 'coding' },
-                { label: 'Ask Watsonx', id: 'chat' }
+                { label: 'Ask Bob', id: 'chat' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -932,7 +919,7 @@ const App = () => {
             {activeTab === 'overview' && (
               <div className="card-grid animate-fade-up">
                 <div className="bob-stats-card col-span-full">
-                  <label className="bob-stats-label">WHAT WATSONX DID</label>
+                  <label className="bob-stats-label">WHAT BOB DID</label>
 
                   <div className="bob-stats-grid grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5">
                     {[
@@ -957,7 +944,7 @@ const App = () => {
                   </div>
 
                   <div className="bob-description">
-                    Watsonx.ai read every file in this repository — not just the README. Full SDLC context.
+                    Bob read every file in this repository — not just the README. Full SDLC context.
                   </div>
                 </div>
 
@@ -1074,7 +1061,7 @@ const App = () => {
                 </div>
 
                 <div className="card col-span-full">
-                  <label className="label">Onboarding Steps · AI Generated</label>
+                  <label className="label">Onboarding Steps · Bob Generated</label>
                   <div className="mt-4 space-y-[1px]">
                     {analysis?.onboarding_steps?.map((step, i) => (
                       <div
@@ -1179,7 +1166,7 @@ const App = () => {
                 <div className="col-span-full bg-[var(--paper2)] p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
                   <div>
                     <h3 className="font-serif text-[20px]">Ready to make your first contribution?</h3>
-                    <p className="label mt-1 font-medium">Watsonx.ai will find an issue, write the fix...</p>
+                    <p className="label mt-1 font-medium">Bob will find an issue, write the fix...</p>
                   </div>
                   <button onClick={handleKickstart} className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-8 py-3 label font-semibold transition-base">Start Coding →</button>
                 </div>
@@ -1201,19 +1188,19 @@ const App = () => {
                 {codingLoading ? (
                   <div className="py-20 text-center">
                     <div className="w-10 h-10 border-2 border-[var(--gold)] border-t-transparent animate-spin mx-auto mb-6" />
-                    <h2 className="font-serif text-[24px]">Watsonx is orchestrating...</h2>
+                    <h2 className="font-serif text-[24px]">Bob is orchestrating...</h2>
                   </div>
                 ) : !coding ? (
                   <div className="py-20 text-center max-w-md mx-auto">
-                    <h2 className="font-serif text-[28px] mb-4">Let Watsonx write your first contribution</h2>
-                    <p className="text-[11px] text-[var(--dim)] font-medium mb-10 leading-[1.8]">Watsonx.ai will analyze the codebase, identify a small technical debt or bug, and generate the code change for you.</p>
+                    <h2 className="font-serif text-[28px] mb-4">Let Bob write your first contribution</h2>
+                    <p className="text-[11px] text-[var(--dim)] font-medium mb-10 leading-[1.8]">Bob will analyze the codebase, identify a small technical debt or bug, and generate the code change for you.</p>
                     <button onClick={handleKickstart} className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-10 py-4 label font-semibold transition-base">Start Coding For Me</button>
                   </div>
                 ) : (
                   <div className="space-y-8">
                     <div className="card-grid">
                       <div className="card col-span-full">
-                        <label className="label">Watsonx.ai · Orchestrator Mode · Issue Found</label>
+                        <label className="label">Bob · Orchestrator Mode · Issue Found</label>
                         <h3 className="font-serif text-[22px] mt-4 mb-2">{coding.issue_title || coding.issue?.title || 'Issue'}</h3>
                         <p className="text-[11px] text-[var(--muted)] font-normal leading-[1.7] mb-6">{coding.issue_description || coding.issue?.description}</p>
                         <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
@@ -1223,7 +1210,7 @@ const App = () => {
                       </div>
 
                       <div className="card col-span-full">
-                        <label className="label">Watsonx Mode Chain</label>
+                        <label className="label">Bob Mode Chain</label>
                         <div className="flex items-center justify-between gap-3 mt-8 max-w-lg mx-auto overflow-x-auto">
                           {['Plan', 'Ask', 'Code', 'Orchestrator'].map((m, i) => (
                             <React.Fragment key={i}>
@@ -1267,7 +1254,7 @@ const App = () => {
 
             {activeTab === 'chat' && (
               <div className="animate-fade-up">
-                <label className="label">Ask Watsonx Anything</label>
+                <label className="label">Ask Bob Anything</label>
                 <div className="flex flex-wrap gap-2 mt-4 mb-10">
                   {["How does routing work?", "Where to add auth?", "What does middleware do?", "How to add an API?"].map(q => (
                     <button key={q} onClick={() => handleSend(q)} className="label border border-[var(--border)] px-3 py-[6px] text-[var(--muted)] font-medium hover:border-[var(--gold)] hover:text-[var(--gold)] transition-base">{q}</button>
@@ -1281,7 +1268,7 @@ const App = () => {
                     )}
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex flex-col ${m.role === 'bob' ? 'items-start' : 'items-end'}`}>
-                        {m.role === 'bob' && <label className="label text-[var(--sage)] mb-2 font-semibold">Watsonx.ai · Ask Mode</label>}
+                        {m.role === 'bob' && <label className="label text-[var(--sage)] mb-2 font-semibold">Bob · Ask Mode</label>}
                         <div className={`p-4 text-[11px] leading-[1.7] max-w-[85%] font-mono font-normal ${m.role === 'bob' ? 'bg-[var(--paper2)] border border-[var(--border)] text-[var(--ink)]' : 'bg-[var(--ink)] text-[var(--paper)]'}`}>
                           {m.content}
                         </div>
