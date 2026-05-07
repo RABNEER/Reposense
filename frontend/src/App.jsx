@@ -317,6 +317,14 @@ const App = () => {
   const bobModesUsed = analysis?.bob_modes_used?.length
     ? analysis.bob_modes_used
     : ['Plan', 'Ask', 'Code', 'Orchestrator'];
+  const repoShellName = parseRepoName(repoUrl);
+  const shellTotalFiles = analysis?.total_files || analysis?.file_tree_count || 'unknown';
+  const shellPrTitle = coding?.pr_title || coding?.pr?.title || 'Pull Request';
+  const shellIssueTitle = coding?.issue_title || coding?.issue?.title || 'issue';
+  const shellIssueSlug = shellIssueTitle
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-');
   const hasCustomApi = Boolean(ibmBobKey.trim() || geminiKey.trim() || githubToken.trim());
   const apiStatus = mockModeToggle
     ? { label: '○ DEMO — Mock', color: 'var(--gold)' }
@@ -328,7 +336,7 @@ const App = () => {
 
   // ─── STYLES ───
   const styles = `
-    @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500;600&display=swap');
 
     :root {
       --ink: #0a0a0a;
@@ -446,6 +454,31 @@ const App = () => {
     }
     .card-grid { display: grid; background: var(--border); gap: 1px; border: 1px solid var(--border); }
     .card { background: var(--paper); padding: 24px; width: 100%; }
+    .bob-shell-card {
+      background: #0a0a0a;
+      border: 1px solid #1a1a1a;
+      color: #22c98a;
+      padding: 20px;
+      width: 100%;
+    }
+    .bob-shell-label {
+      color: #22c98a;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    .bob-shell-terminal {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      line-height: 1.8;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .bob-shell-command { color: #9b96b0; }
+    .bob-shell-output { color: #22c98a; }
+    .bob-shell-highlight { color: #c9a84c; }
     .bob-stats-card {
       width: 100%;
       background: var(--paper2);
@@ -1245,6 +1278,25 @@ const App = () => {
                           <p className="text-[10px] text-[var(--dim)] font-medium mt-2 leading-[1.6]">{coding.pr_description || coding.pr?.description || 'Description'}</p>
                         </div>
                         <button onClick={() => { navigator.clipboard.writeText(coding.pr_title || ''); alert('PR title copied!'); }} className="w-full sm:w-auto label border border-[var(--border)] px-4 py-2 font-semibold">Copy PR</button>
+                      </div>
+
+                      <div className="col-span-full bob-shell-card">
+                        <div className="bob-shell-label">BOB SHELL</div>
+                        <div className="bob-shell-terminal">
+                          <div className="bob-shell-command">$ bob connect --repo {repoShellName}</div>
+                          <div className="bob-shell-output"> Repository cloned to secure VM</div>
+                          <div className="bob-shell-highlight"> Context loaded: {shellTotalFiles} files</div>
+                          <br />
+                          <div className="bob-shell-command">$ bob orchestrate --mode full-pipeline</div>
+                          <div className="bob-shell-output"> Plan mode: Architecture analyzed</div>
+                          <div className="bob-shell-output"> Ask mode: Issue identified</div>
+                          <div className="bob-shell-output"> Code mode: Fix generated</div>
+                          <div className="bob-shell-highlight"> Orchestrator: Pipeline complete</div>
+                          <br />
+                          <div className="bob-shell-command">$ bob suggest-pr --branch fix/{shellIssueSlug}</div>
+                          <div className="bob-shell-highlight"> PR ready: {shellPrTitle}</div>
+                          <div className="bob-shell-output"> View diff above</div>
+                        </div>
                       </div>
                     </div>
                   </div>
