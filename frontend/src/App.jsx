@@ -1280,22 +1280,28 @@ const App = () => {
                         <button onClick={() => { navigator.clipboard.writeText(coding.pr_title || ''); alert('PR title copied!'); }} className="w-full sm:w-auto label border border-[var(--border)] px-4 py-2 font-semibold">Copy PR</button>
                       </div>
 
-                      <div className="col-span-full bob-shell-card">
-                        <div className="bob-shell-label">BOB SHELL</div>
-                        <div className="bob-shell-terminal">
-                          <div className="bob-shell-command">$ bob connect --repo {repoShellName}</div>
-                          <div className="bob-shell-output"> Repository cloned to secure VM</div>
-                          <div className="bob-shell-highlight"> Context loaded: {shellTotalFiles} files</div>
-                          <br />
-                          <div className="bob-shell-command">$ bob orchestrate --mode full-pipeline</div>
-                          <div className="bob-shell-output"> Plan mode: Architecture analyzed</div>
-                          <div className="bob-shell-output"> Ask mode: Issue identified</div>
-                          <div className="bob-shell-output"> Code mode: Fix generated</div>
-                          <div className="bob-shell-highlight"> Orchestrator: Pipeline complete</div>
-                          <br />
-                          <div className="bob-shell-command">$ bob suggest-pr --branch fix/{shellIssueSlug}</div>
-                          <div className="bob-shell-highlight"> PR ready: {shellPrTitle}</div>
-                          <div className="bob-shell-output"> View diff above</div>
+                      <div className=\"col-span-full\" style={{
+                        background: '#0a0a0a',
+                        padding: '16px 20px',
+                        border: '1px solid #1a1a1a',
+                        width: '100%'
+                      }}>
+                        <div className=\"label\" style={{ color: '#22c98a', marginBottom: '16px', opacity: 0.8 }}>BOB SHELL</div>
+                        <div style={{
+                          fontFamily: '\"DM Mono\", monospace',
+                          fontSize: '11px',
+                          lineHeight: '2',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-all'
+                        }}>
+                          <div style={{ color: '#555' }}>$ bob connect --repo {repoShellName}</div>
+                          <div style={{ color: '#22c98a' }}>✓ Repository context loaded ({shellTotalFiles} files)</div>
+                          <div style={{ color: '#555' }}>$ bob run --mode orchestrator</div>
+                          <div style={{ color: '#22c98a' }}>✓ Plan: Architecture analyzed</div>
+                          <div style={{ color: '#22c98a' }}>✓ Ask: Issue identified</div>
+                          <div style={{ color: '#22c98a' }}>✓ Code: Fix generated</div>
+                          <div style={{ color: '#22c98a' }}>✓ Orchestrator: Pipeline complete</div>
+                          <div style={{ color: '#c9a84c' }}>→ PR ready: {shellPrTitle}</div>
                         </div>
                       </div>
                     </div>
