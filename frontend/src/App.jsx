@@ -38,7 +38,7 @@ const App = () => {
   const [mockModeToggle, setMockModeToggle] = useState(() => readStoredConfig('mock_mode', 'true') === 'true');
   const [mockModeManualOverride, setMockModeManualOverride] = useState(false);
   const [toast, setToast] = useState(null); // { message, type }
-  
+
   // Auto-dismiss toast
   useEffect(() => {
     if (toast) {
@@ -100,7 +100,7 @@ const App = () => {
           const errMsg = err.message || 'Analysis failed';
           setApiError(errMsg);
           setAppState('hero');
-          
+
           if (errMsg.toLowerCase().includes('not found')) {
             setToast({ message: 'Repository not found', type: 'error' });
           } else {
@@ -458,11 +458,11 @@ const App = () => {
       background: #0a0a0a;
       border: 1px solid #1a1a1a;
       color: #22c98a;
-      padding: 20px;
+      padding: 16px 20px;
       width: 100%;
     }
     .bob-shell-label {
-      color: #22c98a;
+      color: #555;
       font-family: 'DM Mono', monospace;
       font-size: 10px;
       letter-spacing: 0.18em;
@@ -472,11 +472,11 @@ const App = () => {
     .bob-shell-terminal {
       font-family: 'DM Mono', monospace;
       font-size: 11px;
-      line-height: 1.8;
+      line-height: 2;
       overflow-x: auto;
       white-space: pre;
     }
-    .bob-shell-command { color: #9b96b0; }
+    .bob-shell-command { color: #555; }
     .bob-shell-output { color: #22c98a; }
     .bob-shell-highlight { color: #c9a84c; }
     .bob-stats-card {
@@ -1280,28 +1280,17 @@ const App = () => {
                         <button onClick={() => { navigator.clipboard.writeText(coding.pr_title || ''); alert('PR title copied!'); }} className="w-full sm:w-auto label border border-[var(--border)] px-4 py-2 font-semibold">Copy PR</button>
                       </div>
 
-                      <div className=\"col-span-full\" style={{
-                        background: '#0a0a0a',
-                        padding: '16px 20px',
-                        border: '1px solid #1a1a1a',
-                        width: '100%'
-                      }}>
-                        <div className=\"label\" style={{ color: '#22c98a', marginBottom: '16px', opacity: 0.8 }}>BOB SHELL</div>
-                        <div style={{
-                          fontFamily: '\"DM Mono\", monospace',
-                          fontSize: '11px',
-                          lineHeight: '2',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-all'
-                        }}>
-                          <div style={{ color: '#555' }}>$ bob connect --repo {repoShellName}</div>
-                          <div style={{ color: '#22c98a' }}>✓ Repository context loaded ({shellTotalFiles} files)</div>
-                          <div style={{ color: '#555' }}>$ bob run --mode orchestrator</div>
-                          <div style={{ color: '#22c98a' }}>✓ Plan: Architecture analyzed</div>
-                          <div style={{ color: '#22c98a' }}>✓ Ask: Issue identified</div>
-                          <div style={{ color: '#22c98a' }}>✓ Code: Fix generated</div>
-                          <div style={{ color: '#22c98a' }}>✓ Orchestrator: Pipeline complete</div>
-                          <div style={{ color: '#c9a84c' }}>→ PR ready: {shellPrTitle}</div>
+                      <div className="col-span-full bob-shell-card">
+                        <div className="bob-shell-label">BOB SHELL</div>
+                        <div className="bob-shell-terminal">
+                          <div className="bob-shell-command">$ bob connect --repo {repoShellName}</div>
+                          <div className="bob-shell-output">✓ Repository context loaded ({shellTotalFiles} files)</div>
+                          <div className="bob-shell-command">$ bob run --mode orchestrator</div>
+                          <div className="bob-shell-output">✓ Plan: Architecture analyzed</div>
+                          <div className="bob-shell-output">✓ Ask: Issue identified</div>
+                          <div className="bob-shell-output">✓ Code: Fix generated</div>
+                          <div className="bob-shell-output">✓ Orchestrator: Pipeline complete</div>
+                          <div className="bob-shell-highlight">→ PR ready: {shellPrTitle}</div>
                         </div>
                       </div>
                     </div>
@@ -1371,7 +1360,7 @@ const App = () => {
         }}>
           <span>{toast.type === 'error' ? '✕' : '✓'}</span>
           <span>{toast.message}</span>
-          <button 
+          <button
             onClick={() => setToast(null)}
             style={{ marginLeft: '12px', opacity: 0.5, fontSize: '14px' }}
           >✕</button>
