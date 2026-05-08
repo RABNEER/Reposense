@@ -1280,18 +1280,88 @@ const App = () => {
                         <button onClick={() => { navigator.clipboard.writeText(coding.pr_title || ''); alert('PR title copied!'); }} className="w-full sm:w-auto label border border-[var(--border)] px-4 py-2 font-semibold">Copy PR</button>
                       </div>
 
-                      <div className="col-span-full bob-shell-card">
-                        <div className="bob-shell-label">BOB SHELL</div>
-                        <div className="bob-shell-terminal">
-                          <div className="bob-shell-command">$ bob connect --repo {repoShellName}</div>
-                          <div className="bob-shell-output">✓ Repository context loaded ({shellTotalFiles} files)</div>
-                          <div className="bob-shell-command">$ bob run --mode orchestrator</div>
-                          <div className="bob-shell-output">✓ Plan: Architecture analyzed</div>
-                          <div className="bob-shell-output">✓ Ask: Issue identified</div>
-                          <div className="bob-shell-output">✓ Code: Fix generated</div>
-                          <div className="bob-shell-output">✓ Orchestrator: Pipeline complete</div>
-                          <div className="bob-shell-highlight">→ PR ready: {shellPrTitle}</div>
+                      <div className="col-span-full" style={{
+                        background: '#0a0a0a',
+                        border: '1px solid #1a1a1a',
+                        padding: '20px',
+                        fontFamily: 'DM Mono, monospace',
+                        fontSize: '11px',
+                        lineHeight: 2
+                      }}>
+                        {/* Terminal header bar */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          marginBottom: '16px',
+                          paddingBottom: '12px',
+                          borderBottom: '1px solid #1a1a1a'
+                        }}>
+                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f57' }} />
+                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e' }} />
+                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }} />
+                          <span style={{
+                            marginLeft: 'auto',
+                            fontSize: '9px',
+                            letterSpacing: '0.1em',
+                            color: '#333',
+                            textTransform: 'uppercase'
+                          }}>
+                            Bob Shell — Live Session
+                          </span>
                         </div>
+
+                        {/* Completed lines */}
+                        {visibleLines.map((line, i) => (
+                          <div key={i} style={{
+                            color: line.type === 'command' ? '#555' :
+                              line.type === 'success' ? '#22c98a' : '#c9a84c',
+                            marginBottom: '2px'
+                          }}>
+                            {line.type === 'command' && (
+                              <span style={{ color: '#333', marginRight: '8px' }}>$</span>
+                            )}
+                            {line.type === 'success' && (
+                              <span style={{ color: '#22c98a', marginRight: '8px' }}>✓</span>
+                            )}
+                            {line.type === 'output' && (
+                              <span style={{ color: '#c9a84c', marginRight: '8px' }}>→</span>
+                            )}
+                            {line.text}
+                          </div>
+                        ))}
+
+                        {/* Currently typing line */}
+                        {typingLine && (
+                          <div style={{ color: '#888' }}>
+                            <span style={{ color: '#333', marginRight: '8px' }}>$</span>
+                            {typingLine}
+                            <span style={{
+                              display: 'inline-block',
+                              width: '7px',
+                              height: '13px',
+                              background: '#22c98a',
+                              marginLeft: '2px',
+                              animation: 'blink 1s step-end infinite',
+                              verticalAlign: 'middle'
+                            }} />
+                          </div>
+                        )}
+
+                        {/* Blinking cursor when done */}
+                        {!isShellTyping && visibleLines.length > 0 && (
+                          <div style={{ marginTop: '4px' }}>
+                            <span style={{ color: '#333', marginRight: '8px' }}>$</span>
+                            <span style={{
+                              display: 'inline-block',
+                              width: '7px',
+                              height: '13px',
+                              background: '#22c98a',
+                              animation: 'blink 1s step-end infinite',
+                              verticalAlign: 'middle'
+                            }} />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
