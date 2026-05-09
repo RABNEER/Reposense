@@ -174,6 +174,33 @@ class ErrorResponse(BaseModel):
     code: int
 
 
+def safe_error(e: Exception, context: str = "") -> str:
+    error_str = str(e).lower()
+
+    if "rate limit" in error_str or "429" in error_str:
+        return "AI service rate limit reached. Please try again in a moment."
+
+    if "timeout" in error_str or "timed out" in error_str:
+        return "Request timed out. Try a smaller repository."
+
+    if "api key" in error_str or "auth" in error_str or "401" in error_str:
+        return "Invalid API key. Check your settings."
+
+    if "not found" in error_str or "404" in error_str:
+        return "Repository not found. Check the URL."
+
+    if "private" in error_str or "403" in error_str:
+        return "Repository is private or access denied."
+
+    if "quota" in error_str or "billing" in error_str:
+        return "API quota exceeded. Try again later."
+
+    if context:
+        return f"{context} failed. Please try again."
+
+    return "Something went wrong. Please try again."
+
+
 def get_request_config(http_request: Request) -> dict:
     headers = http_request.headers
     return {
@@ -282,7 +309,7 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
             logger.info("Using mock analysis response")
             return get_mock_analyze_response(payload.github_url)
 
-        repo_context = build_repo_context(payload.github_url, config["github_token"])
+        repo_context = await build_repo_context(payload.github_url, config["github_token"])
         logger.info(f"Repository context built: {repo_context['repo_name']}")
 
         analysis = await call_ai(ai_client, "analyze", 120.0, repo_context)
@@ -290,32 +317,24 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
         logger.info(f"Analysis complete for {repo_context['repo_name']}")
         return analysis
 
-    except asyncio.TimeoutError:
+    except asyncio.TimeoutError as e:
         logger.error(f"Analysis timeout for {payload.github_url}")
         raise HTTPException(
             status_code=504,
-            detail={
-                "error": "Analysis timeout",
-                "detail": "The analysis took too long. Please try again with a smaller repository.",
-                "code": 504
-            }
+            detail=safe_error(e, "Analysis")
         )
     except GitHubParserError as e:
         logger.error(f"GitHub parser error: {str(e)}")
         if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail={"error": "Repository is private", "detail": str(e), "code": 403})
+            raise HTTPException(status_code=403, detail=safe_error(e, "Analysis"))
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
-        raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
+            raise HTTPException(status_code=404, detail=safe_error(e, "Analysis"))
+        raise HTTPException(status_code=400, detail=safe_error(e, "Analysis"))
     except (BobAPIError, BobParseError, Exception) as e:
         logger.exception("AI provider error:")
         raise HTTPException(
             status_code=502,
-            detail={
-                "error": "AI provider unavailable",
-                "detail": f"Could not complete AI request: {str(e)}",
-                "code": 502
-            }
+            detail=safe_error(e, "Analysis")
         )
 
 
@@ -343,32 +362,28 @@ async def ask_question(payload: AskRequest, http_request: Request):
             logger.info("Using mock ask response")
             return get_mock_ask_response(payload.github_url, payload.question)
 
-        repo_context = build_repo_context(payload.github_url, config["github_token"])
+        repo_context = await build_repo_context(payload.github_url, config["github_token"])
         response = await call_ai(ai_client, "ask", 120.0, repo_context, payload.question, payload.history)
 
         logger.info(f"Question answered for {repo_context['repo_name']}")
         return response
 
-    except asyncio.TimeoutError:
+    except asyncio.TimeoutError as e:
         logger.error(f"Question timeout for {payload.github_url}")
         raise HTTPException(
             status_code=504,
-            detail={
-                "error": "Request timeout",
-                "detail": "The question took too long to answer. Please try a simpler question.",
-                "code": 504
-            }
+            detail=safe_error(e, "Question")
         )
     except GitHubParserError as e:
         logger.error(f"GitHub parser error: {str(e)}")
         if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail={"error": "Repository is private", "detail": str(e), "code": 403})
+            raise HTTPException(status_code=403, detail=safe_error(e, "Question"))
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
-        raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
+            raise HTTPException(status_code=404, detail=safe_error(e, "Question"))
+        raise HTTPException(status_code=400, detail=safe_error(e, "Question"))
     except (BobAPIError, BobParseError, Exception) as e:
         logger.exception("AI provider error:")
-        raise HTTPException(status_code=502, detail={"error": "AI provider unavailable", "detail": str(e), "code": 502})
+        raise HTTPException(status_code=502, detail=safe_error(e, "Question"))
 
 
 @app.post("/api/task")
@@ -395,7 +410,7 @@ async def kickstart_task(payload: TaskRequest, http_request: Request):
             logger.info("Using mock orchestration response")
             return get_mock_orchestrate_response(payload.github_url)
 
-        repo_context = build_repo_context(payload.github_url, config["github_token"])
+        repo_context = await build_repo_context(payload.github_url, config["github_token"])
         logger.info(f"Running full orchestration pipeline for {repo_context['repo_name']}")
 
         coding_response = await call_ai(ai_client, "orchestrate", 180.0, repo_context)
@@ -403,26 +418,22 @@ async def kickstart_task(payload: TaskRequest, http_request: Request):
         logger.info(f"Orchestration complete for {repo_context['repo_name']}")
         return coding_response
 
-    except asyncio.TimeoutError:
+    except asyncio.TimeoutError as e:
         logger.error(f"Orchestration timeout for {payload.github_url}")
         raise HTTPException(
             status_code=504,
-            detail={
-                "error": "Orchestration timeout",
-                "detail": "The code generation took too long. Please try again.",
-                "code": 504
-            }
+            detail=safe_error(e, "Orchestration")
         )
     except GitHubParserError as e:
         logger.error(f"GitHub parser error: {str(e)}")
         if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail={"error": "Repository is private", "detail": str(e), "code": 403})
+            raise HTTPException(status_code=403, detail=safe_error(e, "Orchestration"))
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
-        raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
+            raise HTTPException(status_code=404, detail=safe_error(e, "Orchestration"))
+        raise HTTPException(status_code=400, detail=safe_error(e, "Orchestration"))
     except (BobAPIError, BobParseError, Exception) as e:
         logger.exception("AI provider error:")
-        raise HTTPException(status_code=502, detail={"error": "AI provider unavailable", "detail": str(e), "code": 502})
+        raise HTTPException(status_code=502, detail=safe_error(e, "Orchestration"))
 
 
 @app.post("/api/export/markdown")
@@ -449,7 +460,7 @@ async def export_markdown(payload: ExportRequest, http_request: Request):
             repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
             markdown_content = f"# {repo_name} - Developer Onboarding Guide\n\nGenerated with RepoSense mock mode."
         else:
-            repo_context = build_repo_context(payload.github_url, config["github_token"])
+            repo_context = await build_repo_context(payload.github_url, config["github_token"])
             markdown_content = await call_ai(ai_client, "generate_doc", 120.0, repo_context)
             repo_name = repo_context["repo_name"]
 
@@ -466,26 +477,22 @@ async def export_markdown(payload: ExportRequest, http_request: Request):
             }
         )
 
-    except asyncio.TimeoutError:
+    except asyncio.TimeoutError as e:
         logger.error(f"Export timeout for {payload.github_url}")
         raise HTTPException(
             status_code=504,
-            detail={
-                "error": "Export timeout",
-                "detail": "The export took too long. Please try again.",
-                "code": 504
-            }
+            detail=safe_error(e, "Export")
         )
     except GitHubParserError as e:
         logger.error(f"GitHub parser error: {str(e)}")
         if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail={"error": "Repository is private", "detail": str(e), "code": 403})
+            raise HTTPException(status_code=403, detail=safe_error(e, "Export"))
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail={"error": "Repository not found", "detail": str(e), "code": 404})
-        raise HTTPException(status_code=400, detail={"error": "Invalid repository", "detail": str(e), "code": 400})
+            raise HTTPException(status_code=404, detail=safe_error(e, "Export"))
+        raise HTTPException(status_code=400, detail=safe_error(e, "Export"))
     except (BobAPIError, BobParseError, Exception) as e:
         logger.exception("AI provider error:")
-        raise HTTPException(status_code=502, detail={"error": "AI provider unavailable", "detail": str(e), "code": 502})
+        raise HTTPException(status_code=502, detail=safe_error(e, "Export"))
 
 
 if __name__ == "__main__":

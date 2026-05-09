@@ -55,6 +55,7 @@ const App = () => {
   const chatEndRef = useRef(null);
   const startTimeRef = useRef(null);
   const shellRunRef = useRef(0);
+  const analyzingRef = useRef(false);
 
   // ─── CONSTANTS ───
   const steps = [
@@ -96,6 +97,7 @@ const App = () => {
             setElapsedTime(`${elapsed}s`);
           }
           setAnalysis(data);
+          analyzingRef.current = false;
           setAppState('results');
           setChatMessages([{
             role: 'bob',
@@ -103,6 +105,7 @@ const App = () => {
           }]);
         } catch (err) {
           const errMsg = err.message || 'Analysis failed';
+          analyzingRef.current = false;
           setApiError(errMsg);
           setAppState('hero');
 
@@ -132,7 +135,15 @@ const App = () => {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (appState !== 'results') return;
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const tag = e.target.tagName.toLowerCase();
+      const isEditable =
+        tag === 'input' ||
+        tag === 'textarea' ||
+        e.target.contentEditable === 'true' ||
+        e.target.isContentEditable;
+
+      if (isEditable) return;
 
       if (e.key === '1') setActiveTab('overview');
       if (e.key === '2') setActiveTab('coding');
@@ -262,6 +273,8 @@ const App = () => {
   }, []);
 
   const handleAnalyze = () => {
+    if (analyzingRef.current) return;
+
     const githubRegex = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\/?$/;
     const trimmedInput = inputValue.trim();
 
@@ -279,6 +292,7 @@ const App = () => {
 
     setRepoUrl(normalizedUrl);
     setInputValue(normalizedUrl);
+    analyzingRef.current = true;
     shellRunRef.current += 1;
     setCoding(null);
     setShellLines([]);
@@ -297,6 +311,7 @@ const App = () => {
     setAppState('hero');
     setAnalysis(null);
     setCoding(null);
+    analyzingRef.current = false;
     shellRunRef.current += 1;
     setShellLines([]);
     setTypingText('');
@@ -904,7 +919,8 @@ const App = () => {
                 />
                 <button
                   onClick={handleAnalyze}
-                  className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-6 py-4 label font-semibold transition-base"
+                  disabled={appState === 'loading' || analyzingRef.current}
+                  className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-6 py-4 label font-semibold transition-base disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Analyze
                 </button>

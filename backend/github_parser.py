@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 import time
 import logging
@@ -198,13 +199,8 @@ def fetch_file_tree(owner: str, repo: str, branch: str, token: Optional[str] = N
             raise
         raise GitHubParserError(f"Error fetching file tree: {str(e)}")
 
-def fetch_key_files(owner: str, repo: str, file_tree: List[Dict], token: Optional[str] = None) -> Dict[str, str]:
-    """
-    Fetch content of key files from repository.
-    
-    Returns: dict mapping filepath to content
-    Raises: GitHubParserError on failure
-    """
+def select_priority_files(file_tree: list) -> list:
+    """Select up to 40 high-priority files to fetch from the repository."""
     priority_1 = [
         'README.md', 'README.rst', 'README', 'README.txt',
         'package.json', 'package-lock.json',
@@ -280,40 +276,99 @@ def fetch_key_files(owner: str, repo: str, file_tree: List[Dict], token: Optiona
                 break
     
     files_to_fetch = list(dict.fromkeys(files_to_fetch))[:40]
+    return files_to_fetch
+
+
+def detect_languages(metadata: dict, file_tree: list) -> set:
+    """Detect languages from repository metadata and file extensions."""
+    languages_detected = set()
+    if metadata["language"]:
+        languages_detected.add(metadata["language"])
+
+    for filepath in file_tree:
+        path = filepath["path"]
+        if path.endswith('.py'):
+            languages_detected.add('Python')
+        elif path.endswith(('.js', '.jsx')):
+            languages_detected.add('JavaScript')
+        elif path.endswith(('.ts', '.tsx')):
+            languages_detected.add('TypeScript')
+        elif path.endswith('.go'):
+            languages_detected.add('Go')
+        elif path.endswith('.rs'):
+            languages_detected.add('Rust')
+        elif path.endswith('.java'):
+            languages_detected.add('Java')
+        elif path.endswith('.rb'):
+            languages_detected.add('Ruby')
+        elif path.endswith('.php'):
+            languages_detected.add('PHP')
+
+    return languages_detected
+
+
+async def fetch_key_files_async(
+    owner: str,
+    repo: str,
+    file_tree: list,
+    token: Optional[str] = None
+) -> dict:
+    """
+    Fetch content of key files from repository concurrently.
+
+    Returns: dict mapping filepath to content
+    """
+    priority_files = select_priority_files(file_tree)
     
     headers = {"Accept": "application/vnd.github.v3.raw"}
     if token:
         headers["Authorization"] = f"token {token}"
-    
-    key_files = {}
-    max_file_size = 150 * 1024
-    
-    for filepath in files_to_fetch:
+
+    async def fetch_single(client, filepath, file_info):
         try:
-            file_info = next((f for f in file_tree if f["path"] == filepath), None)
-            if file_info and file_info.get("size", 0) > max_file_size:
-                logger.info(f"Skipping large file: {filepath} ({file_info['size']} bytes)")
-                key_files[filepath] = f"[File too large: {file_info['size']} bytes]"
-                continue
-            
+            if file_info and file_info.get("size", 0) > 150 * 1024:
+                return filepath, f"[File too large: {file_info['size']} bytes]"
+
             url = f"https://api.github.com/repos/{owner}/{repo}/contents/{filepath}"
-            response = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
-            
+            response = await client.get(url, headers=headers, timeout=15.0)
+
             if response.status_code == 200:
                 content = response.text
-                key_files[filepath] = content
                 logger.info(f"Fetched: {filepath} ({len(content)} chars)")
+                return filepath, content
             else:
-                logger.warning(f"Could not fetch {filepath}: {response.status_code}")
-                
+                return filepath, None
+
         except Exception as e:
             logger.warning(f"Error fetching {filepath}: {str(e)}")
-            continue
-    
-    logger.info(f"Successfully fetched {len(key_files)} key files")
+            return filepath, None
+
+    file_path_map = {f["path"]: f for f in file_tree}
+
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        tasks = [
+            fetch_single(
+                client,
+                filepath,
+                file_path_map.get(filepath)
+            )
+            for filepath in priority_files
+        ]
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    key_files = {}
+    for result in results:
+        if isinstance(result, tuple):
+            filepath, content = result
+            if content:
+                key_files[filepath] = content
+
+    logger.info(f"Successfully fetched {len(key_files)} key files concurrently")
     return key_files
 
-def build_repo_context(github_url: str, token: Optional[str] = None) -> Dict:
+
+async def build_repo_context(github_url: str, token: Optional[str] = None) -> Dict:
     """
     Build complete repository context by fetching all necessary data.
     
@@ -333,31 +388,10 @@ def build_repo_context(github_url: str, token: Optional[str] = None) -> Dict:
         file_tree = fetch_file_tree(owner, repo_name, branch, token)
         logger.info(f"Fetched file tree: {len(file_tree)} files")
         
-        key_files = fetch_key_files(owner, repo_name, file_tree, token)
+        key_files = await fetch_key_files_async(owner, repo_name, file_tree, token)
         logger.info(f"Fetched {len(key_files)} key files")
         
-        languages_detected = set()
-        if metadata["language"]:
-            languages_detected.add(metadata["language"])
-        
-        for filepath in file_tree:
-            path = filepath["path"]
-            if path.endswith('.py'):
-                languages_detected.add('Python')
-            elif path.endswith(('.js', '.jsx')):
-                languages_detected.add('JavaScript')
-            elif path.endswith(('.ts', '.tsx')):
-                languages_detected.add('TypeScript')
-            elif path.endswith('.go'):
-                languages_detected.add('Go')
-            elif path.endswith('.rs'):
-                languages_detected.add('Rust')
-            elif path.endswith('.java'):
-                languages_detected.add('Java')
-            elif path.endswith('.rb'):
-                languages_detected.add('Ruby')
-            elif path.endswith('.php'):
-                languages_detected.add('PHP')
+        languages_detected = detect_languages(metadata, file_tree)
         
         has_tests = any('test' in f["path"].lower() or 'spec' in f["path"].lower() for f in file_tree)
         has_docker = any('dockerfile' in f["path"].lower() or 'docker-compose' in f["path"].lower() for f in file_tree)
