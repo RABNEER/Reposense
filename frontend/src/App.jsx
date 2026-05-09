@@ -18,6 +18,10 @@ const App = () => {
   const [analysis, setAnalysis] = useState(null);
   const [coding, setCoding] = useState(null);
   const [codingLoading, setCodingLoading] = useState(false);
+  const [shellLines, setShellLines] = useState([]);
+  const [typingText, setTypingText] = useState('');
+  const [shellDone, setShellDone] = useState(false);
+  const [shellStarted, setShellStarted] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
@@ -50,6 +54,7 @@ const App = () => {
 
   const chatEndRef = useRef(null);
   const startTimeRef = useRef(null);
+  const shellRunRef = useRef(0);
 
   // ─── CONSTANTS ───
   const steps = [
@@ -193,6 +198,69 @@ const App = () => {
     }
   };
 
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  useEffect(() => {
+    if (!codingLoading) return;
+
+    const runId = shellRunRef.current + 1;
+    shellRunRef.current = runId;
+
+    setShellLines([]);
+    setTypingText('');
+    setShellDone(false);
+    setShellStarted(true);
+
+    const SHELL_SEQUENCE = [
+      { type: 'command', text: `bob connect --repo ${parseRepoName(repoUrl)}` },
+      { type: 'success', text: 'Authenticated with IBM Bob' },
+      { type: 'success', text: `Repository context loaded` },
+      { type: 'command', text: 'bob run --mode ask' },
+      { type: 'success', text: 'Scanning codebase for issues...' },
+      { type: 'success', text: 'Found 1 beginner-friendly issue' },
+      { type: 'command', text: 'bob run --mode plan' },
+      { type: 'success', text: 'Implementation plan created' },
+      { type: 'success', text: 'Files to modify identified' },
+      { type: 'command', text: 'bob run --mode code' },
+      { type: 'success', text: 'Generating production-ready fix...' },
+      { type: 'success', text: 'Code changes written' },
+      { type: 'command', text: 'bob run --mode orchestrator' },
+      { type: 'success', text: 'Explaining changes for junior devs' },
+      { type: 'success', text: 'PR description generated' },
+      { type: 'output', text: 'Pipeline complete. Ready to contribute.' },
+    ];
+
+    const run = async () => {
+      for (let i = 0; i < SHELL_SEQUENCE.length; i++) {
+        if (shellRunRef.current !== runId) return;
+        const line = SHELL_SEQUENCE[i];
+        const charDelay = line.type === 'command' ? 40 : 12;
+
+        let typed = '';
+        for (let j = 0; j < line.text.length; j++) {
+          if (shellRunRef.current !== runId) return;
+          typed += line.text[j];
+          setTypingText(typed);
+          await sleep(charDelay);
+        }
+
+        if (shellRunRef.current !== runId) return;
+        setShellLines(prev => [...prev, line]);
+        setTypingText('');
+        await sleep(line.type === 'command' ? 400 : 200);
+      }
+      if (shellRunRef.current === runId) setShellDone(true);
+    };
+
+    run();
+  }, [codingLoading, repoUrl]);
+
+  useEffect(() => {
+    return () => {
+      shellRunRef.current += 1;
+    };
+  }, []);
+
   const handleAnalyze = () => {
     const githubRegex = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\/?$/;
     const trimmedInput = inputValue.trim();
@@ -211,6 +279,12 @@ const App = () => {
 
     setRepoUrl(normalizedUrl);
     setInputValue(normalizedUrl);
+    shellRunRef.current += 1;
+    setCoding(null);
+    setShellLines([]);
+    setTypingText('');
+    setShellDone(false);
+    setShellStarted(false);
     startTimeRef.current = Date.now();
     setElapsedTime(null);
     setAppState('loading');
@@ -223,6 +297,11 @@ const App = () => {
     setAppState('hero');
     setAnalysis(null);
     setCoding(null);
+    shellRunRef.current += 1;
+    setShellLines([]);
+    setTypingText('');
+    setShellDone(false);
+    setShellStarted(false);
     setChatMessages([]);
     setActiveTab('overview');
     setInputValue('');
@@ -233,6 +312,7 @@ const App = () => {
   const handleKickstart = async () => {
     setCodingLoading(true);
     setActiveTab('coding');
+    setActiveMode(-1);
     try {
       const data = await kickstartTask(repoUrl);
       setCoding(data);
@@ -382,6 +462,14 @@ const App = () => {
     @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.05); } }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    @keyframes fadeInLine {
+      from { opacity: 0; transform: translateY(2px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     .animate-fade-up { animation: fadeUp 600ms ease both; }
     .stagger-1 { animation-delay: 0ms; }
@@ -1218,12 +1306,7 @@ const App = () => {
 
             {activeTab === 'coding' && (
               <div className="animate-fade-up">
-                {codingLoading ? (
-                  <div className="py-20 text-center">
-                    <div className="w-10 h-10 border-2 border-[var(--gold)] border-t-transparent animate-spin mx-auto mb-6" />
-                    <h2 className="font-serif text-[24px]">Bob is orchestrating...</h2>
-                  </div>
-                ) : !coding ? (
+                {!shellStarted && !coding ? (
                   <div className="py-20 text-center max-w-md mx-auto">
                     <h2 className="font-serif text-[28px] mb-4">Let Bob write your first contribution</h2>
                     <p className="text-[11px] text-[var(--dim)] font-medium mb-10 leading-[1.8]">Bob will analyze the codebase, identify a small technical debt or bug, and generate the code change for you.</p>
@@ -1231,139 +1314,194 @@ const App = () => {
                   </div>
                 ) : (
                   <div className="space-y-8">
-                    <div className="card-grid">
-                      <div className="card col-span-full">
-                        <label className="label">Bob · Orchestrator Mode · Issue Found</label>
-                        <h3 className="font-serif text-[22px] mt-4 mb-2">{coding.issue_title || coding.issue?.title || 'Issue'}</h3>
-                        <p className="text-[11px] text-[var(--muted)] font-normal leading-[1.7] mb-6">{coding.issue_description || coding.issue?.description}</p>
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                          <span className="label text-[var(--gold)] font-medium">Complexity: {coding.complexity || coding.issue?.complexity || 'Medium'}</span>
-                          <span className="label text-[var(--sage)] font-medium">Impact: {coding.impact || coding.issue?.impact || 'Medium'}</span>
-                        </div>
-                      </div>
-
-                      <div className="card col-span-full">
-                        <label className="label">Bob Mode Chain</label>
-                        <div className="flex items-center justify-between gap-3 mt-8 max-w-lg mx-auto overflow-x-auto">
-                          {['Plan', 'Ask', 'Code', 'Orchestrator'].map((m, i) => (
-                            <React.Fragment key={i}>
-                              <div className={`flex flex-col items-center gap-2 transition-base ${activeMode >= i ? 'opacity-100' : 'opacity-30'}`}>
-                                <ModePill mode={m} size="lg" />
-                                <span className="label text-[8px] font-medium">{i === 0 ? 'Map' : i === 1 ? 'Context' : i === 2 ? 'Fix' : 'Verify'}</span>
-                              </div>
-                              {i < 3 && <span className="text-[var(--dim)]">→</span>}
-                            </React.Fragment>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="col-span-full bg-[#0a0a0a] p-0">
-                        <div className="bg-[#111] border-b border-[#222] p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                          <span className="text-[10px] text-[#888] font-mono font-medium">{coding.files_involved?.[0] || 'unknown-file.js'}</span>
-                          <button onClick={() => { const diff = coding.code_changes?.[0]?.diff_lines?.map(l => l.content).join('\n') || ''; navigator.clipboard.writeText(diff); alert('Diff copied!'); }} className="label text-[#888] border border-[#333] px-3 py-1 font-semibold hover:text-[#bbb] transition-base">Copy Diff</button>
-                        </div>
-                        <div className="p-4 sm:p-6 font-mono text-[11px] leading-[1.9] overflow-x-auto font-normal">
-                          {coding.code_changes?.[0]?.diff_lines?.map((line, i) => (
-                            <div key={i} className={`px-4 -mx-6 ${line.type === 'add' ? 'bg-[rgba(74,222,128,0.06)] border-l-2 border-[#22c55e] text-[#4ade80]' : line.type === 'remove' ? 'bg-[rgba(239,68,68,0.06)] border-l-2 border-[#ef4444] text-[#f87171]' : 'text-[#666]'}`}>
-                              {line.content}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="col-span-full card flex flex-col sm:flex-row items-start gap-5">
-                        <div className="w-2 h-2 bg-[var(--sage)] mt-[6px] shrink-0" />
-                        <div className="flex-1">
-                          <div className="text-[13px] font-semibold text-[var(--ink)]">{coding.pr_title || coding.pr?.title || 'Pull Request'}</div>
-                          <p className="text-[10px] text-[var(--dim)] font-medium mt-2 leading-[1.6]">{coding.pr_description || coding.pr?.description || 'Description'}</p>
-                        </div>
-                        <button onClick={() => { navigator.clipboard.writeText(coding.pr_title || ''); alert('PR title copied!'); }} className="w-full sm:w-auto label border border-[var(--border)] px-4 py-2 font-semibold">Copy PR</button>
-                      </div>
-
-                      <div className="col-span-full" style={{
+                    {shellStarted && (
+                      <div style={{
                         background: '#0a0a0a',
                         border: '1px solid #1a1a1a',
-                        padding: '20px',
+                        padding: '0',
                         fontFamily: 'DM Mono, monospace',
-                        fontSize: '11px',
-                        lineHeight: 2
+                        fontSize: '12px',
+                        lineHeight: '1.9',
+                        marginBottom: '24px'
                       }}>
-                        {/* Terminal header bar */}
+
+                        {/* Mac-style title bar */}
                         <div style={{
+                          background: '#111',
+                          borderBottom: '1px solid #1a1a1a',
+                          padding: '10px 16px',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '6px',
-                          marginBottom: '16px',
-                          paddingBottom: '12px',
-                          borderBottom: '1px solid #1a1a1a'
+                          gap: '6px'
                         }}>
-                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f57' }} />
-                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e' }} />
-                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }} />
+                          <div style={{
+                            width: 10, height: 10,
+                            borderRadius: '50%', background: '#ff5f57'
+                          }} />
+                          <div style={{
+                            width: 10, height: 10,
+                            borderRadius: '50%', background: '#febc2e'
+                          }} />
+                          <div style={{
+                            width: 10, height: 10,
+                            borderRadius: '50%', background: '#28c840'
+                          }} />
                           <span style={{
                             marginLeft: 'auto',
                             fontSize: '9px',
-                            letterSpacing: '0.1em',
-                            color: '#333',
-                            textTransform: 'uppercase'
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            color: '#444'
                           }}>
-                            Bob Shell — Live Session
+                            Bob Shell — Orchestrating
                           </span>
                         </div>
 
-                        {/* Completed lines */}
-                        {visibleLines.map((line, i) => (
-                          <div key={i} style={{
-                            color: line.type === 'command' ? '#555' :
-                              line.type === 'success' ? '#22c98a' : '#c9a84c',
-                            marginBottom: '2px'
-                          }}>
-                            {line.type === 'command' && (
-                              <span style={{ color: '#333', marginRight: '8px' }}>$</span>
-                            )}
-                            {line.type === 'success' && (
-                              <span style={{ color: '#22c98a', marginRight: '8px' }}>✓</span>
-                            )}
-                            {line.type === 'output' && (
-                              <span style={{ color: '#c9a84c', marginRight: '8px' }}>→</span>
-                            )}
-                            {line.text}
-                          </div>
-                        ))}
+                        {/* Terminal body */}
+                        <div style={{ padding: '16px 20px', minHeight: '200px' }}>
 
-                        {/* Currently typing line */}
-                        {typingLine && (
-                          <div style={{ color: '#888' }}>
-                            <span style={{ color: '#333', marginRight: '8px' }}>$</span>
-                            {typingLine}
-                            <span style={{
-                              display: 'inline-block',
-                              width: '7px',
-                              height: '13px',
-                              background: '#22c98a',
-                              marginLeft: '2px',
-                              animation: 'blink 1s step-end infinite',
-                              verticalAlign: 'middle'
-                            }} />
-                          </div>
-                        )}
+                          {/* Completed lines */}
+                          {shellLines.map((line, i) => (
+                            <div key={i} style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '8px',
+                              marginBottom: '2px',
+                              opacity: 1,
+                              animation: 'fadeInLine 0.15s ease'
+                            }}>
+                              <span style={{
+                                color: line.type === 'command' ? '#444' :
+                                  line.type === 'success' ? '#22c98a' : '#c9a84c',
+                                flexShrink: 0,
+                                userSelect: 'none'
+                              }}>
+                                {line.type === 'command' ? '$' :
+                                  line.type === 'success' ? '✓' : '→'}
+                              </span>
+                              <span style={{
+                                color: line.type === 'command' ? '#666' :
+                                  line.type === 'success' ? '#22c98a' : '#c9a84c',
+                                fontWeight: line.type === 'command' ? '500' : '400'
+                              }}>
+                                {line.text}
+                              </span>
+                            </div>
+                          ))}
 
-                        {/* Blinking cursor when done */}
-                        {!isShellTyping && visibleLines.length > 0 && (
-                          <div style={{ marginTop: '4px' }}>
-                            <span style={{ color: '#333', marginRight: '8px' }}>$</span>
-                            <span style={{
-                              display: 'inline-block',
-                              width: '7px',
-                              height: '13px',
-                              background: '#22c98a',
-                              animation: 'blink 1s step-end infinite',
-                              verticalAlign: 'middle'
-                            }} />
-                          </div>
-                        )}
+                          {/* Currently typing line */}
+                          {typingText && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              marginBottom: '2px'
+                            }}>
+                              <span style={{ color: '#444', flexShrink: 0 }}>$</span>
+                              <span style={{ color: '#888' }}>
+                                {typingText}
+                                <span style={{
+                                  display: 'inline-block',
+                                  width: '7px',
+                                  height: '14px',
+                                  background: '#22c98a',
+                                  marginLeft: '2px',
+                                  verticalAlign: 'middle',
+                                  animation: 'blink 0.8s step-end infinite'
+                                }} />
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Idle blinking cursor */}
+                          {!typingText && !shellDone && shellStarted && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ color: '#444' }}>$</span>
+                              <span style={{
+                                display: 'inline-block',
+                                width: '7px',
+                                height: '14px',
+                                background: '#22c98a',
+                                animation: 'blink 0.8s step-end infinite',
+                                verticalAlign: 'middle'
+                              }} />
+                            </div>
+                          )}
+
+                          {/* Done state cursor */}
+                          {shellDone && (
+                            <div style={{
+                              marginTop: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              <span style={{ color: '#444' }}>$</span>
+                              <span style={{
+                                display: 'inline-block',
+                                width: '7px',
+                                height: '14px',
+                                background: '#22c98a',
+                                animation: 'blink 0.8s step-end infinite',
+                                verticalAlign: 'middle'
+                              }} />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {coding && (
+                      <div className="card-grid">
+                        <div className="card col-span-full">
+                          <label className="label">Bob · Orchestrator Mode · Issue Found</label>
+                          <h3 className="font-serif text-[22px] mt-4 mb-2">{coding.issue_title || coding.issue?.title || 'Issue'}</h3>
+                          <p className="text-[11px] text-[var(--muted)] font-normal leading-[1.7] mb-6">{coding.issue_description || coding.issue?.description}</p>
+                          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                            <span className="label text-[var(--gold)] font-medium">Complexity: {coding.complexity || coding.issue?.complexity || 'Medium'}</span>
+                            <span className="label text-[var(--sage)] font-medium">Impact: {coding.impact || coding.issue?.impact || 'Medium'}</span>
+                          </div>
+                        </div>
+
+                        <div className="card col-span-full">
+                          <label className="label">Bob Mode Chain</label>
+                          <div className="flex items-center justify-between gap-3 mt-8 max-w-lg mx-auto overflow-x-auto">
+                            {['Plan', 'Ask', 'Code', 'Orchestrator'].map((m, i) => (
+                              <React.Fragment key={i}>
+                                <div className={`flex flex-col items-center gap-2 transition-base ${activeMode >= i ? 'opacity-100' : 'opacity-30'}`}>
+                                  <ModePill mode={m} size="lg" />
+                                  <span className="label text-[8px] font-medium">{i === 0 ? 'Map' : i === 1 ? 'Context' : i === 2 ? 'Fix' : 'Verify'}</span>
+                                </div>
+                                {i < 3 && <span className="text-[var(--dim)]">→</span>}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="col-span-full bg-[#0a0a0a] p-0">
+                          <div className="bg-[#111] border-b border-[#222] p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                            <span className="text-[10px] text-[#888] font-mono font-medium">{coding.files_involved?.[0] || 'unknown-file.js'}</span>
+                            <button onClick={() => { const diff = coding.code_changes?.[0]?.diff_lines?.map(l => l.content).join('\n') || ''; navigator.clipboard.writeText(diff); alert('Diff copied!'); }} className="label text-[#888] border border-[#333] px-3 py-1 font-semibold hover:text-[#bbb] transition-base">Copy Diff</button>
+                          </div>
+                          <div className="p-4 sm:p-6 font-mono text-[11px] leading-[1.9] overflow-x-auto font-normal">
+                            {coding.code_changes?.[0]?.diff_lines?.map((line, i) => (
+                              <div key={i} className={`px-4 -mx-6 ${line.type === 'add' ? 'bg-[rgba(74,222,128,0.06)] border-l-2 border-[#22c55e] text-[#4ade80]' : line.type === 'remove' ? 'bg-[rgba(239,68,68,0.06)] border-l-2 border-[#ef4444] text-[#f87171]' : 'text-[#666]'}`}>
+                                {line.content}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="col-span-full card flex flex-col sm:flex-row items-start gap-5">
+                          <div className="w-2 h-2 bg-[var(--sage)] mt-[6px] shrink-0" />
+                          <div className="flex-1">
+                            <div className="text-[13px] font-semibold text-[var(--ink)]">{coding.pr_title || coding.pr?.title || 'Pull Request'}</div>
+                            <p className="text-[10px] text-[var(--dim)] font-medium mt-2 leading-[1.6]">{coding.pr_description || coding.pr?.description || 'Description'}</p>
+                          </div>
+                          <button onClick={() => { navigator.clipboard.writeText(coding.pr_title || ''); alert('PR title copied!'); }} className="w-full sm:w-auto label border border-[var(--border)] px-4 py-2 font-semibold">Copy PR</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
