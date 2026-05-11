@@ -27,6 +27,8 @@ const App = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [copiedDiff, setCopiedDiff] = useState(false);
+  const [copiedPR, setCopiedPR] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [currentTip, setCurrentTip] = useState(0);
@@ -83,7 +85,7 @@ const App = () => {
   useEffect(() => {
     if (appState === 'loading') {
       const stepInterval = setInterval(() => {
-        setCurrentStep(prev => (prev < steps.length - 1 ? prev + 1 : prev));
+        setCurrentStep(prev => (prev + 1) % steps.length);
       }, 700);
       const tipInterval = setInterval(() => {
         setCurrentTip(prev => (prev + 1) % tips.length);
@@ -362,13 +364,13 @@ const App = () => {
     localStorage.setItem('groq_key', groqKey.trim());
     localStorage.setItem('github_token', githubToken.trim());
 
-    // CRITICAL FIX: Auto-set mock mode based on keys
-    const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
+    // Auto-set mock mode based on keys
     const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
+    const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
+    const hasGroqKey = groqKey && groqKey.trim().length > 0;
+    const hasAnyKey = hasBobKey || hasGeminiKey || hasGroqKey;
 
-    if (aiProvider === 'gemini' || aiProvider === 'groq') {
-      localStorage.setItem('mock_mode', 'false');
-    } else if (hasBobKey || hasGeminiKey || hasGroqKey) {
+    if (hasAnyKey) {
       localStorage.setItem('mock_mode', 'false');
     } else {
       localStorage.setItem('mock_mode', 'true');
@@ -484,6 +486,11 @@ const App = () => {
     @keyframes fadeInLine {
       from { opacity: 0; transform: translateY(2px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes progressLoop {
+      0% { width: 0%; }
+      50% { width: 85%; }
+      100% { width: 0%; }
     }
 
     .animate-fade-up { animation: fadeUp 600ms ease both; }
@@ -1007,8 +1014,11 @@ const App = () => {
               ))}
             </div>
 
-            <div className="w-full h-[1px] bg-[var(--border)] relative mb-4">
-              <div className="absolute top-0 left-0 h-full bg-[var(--gold)] transition-all duration-[4000ms]" style={{ width: `${(currentStep + 1) * 20}%` }} />
+            <div className="w-full h-[1px] bg-[var(--border)] relative mb-4 overflow-hidden">
+              <div className="absolute top-0 left-0 h-full" style={{
+                background: 'var(--gold)',
+                animation: 'progressLoop 3s ease-in-out infinite'
+              }} />
             </div>
 
             <p className="text-[10px] text-[var(--dim)] italic font-normal transition-base">"{tips[currentTip]}"</p>
@@ -1474,9 +1484,57 @@ const App = () => {
                           <h3 className="font-serif text-[22px] mt-4 mb-2">{coding.issue_title || coding.issue?.title || 'Issue'}</h3>
                           <p className="text-[11px] text-[var(--muted)] font-normal leading-[1.7] mb-6">{coding.issue_description || coding.issue?.description}</p>
                           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                            <span className="label text-[var(--gold)] font-medium">Complexity: {coding.complexity || coding.issue?.complexity || 'Medium'}</span>
+                            {(() => {
+                              const complexity = coding.complexity || coding.issue?.complexity || 'Medium';
+                              const complexityColor = {
+                                'Low': 'var(--sage)', 'Easy': 'var(--sage)',
+                                'Medium': 'var(--gold)',
+                                'High': 'var(--rust)', 'Hard': 'var(--rust)'
+                              }[complexity] || 'var(--gold)';
+                              return (
+                                <span className="label font-medium" style={{
+                                  color: complexityColor,
+                                  borderColor: complexityColor,
+                                  border: `1px solid ${complexityColor}`,
+                                  background: complexityColor + '15',
+                                  padding: '2px 8px'
+                                }}>Complexity: {complexity}</span>
+                              );
+                            })()}
                             <span className="label text-[var(--sage)] font-medium">Impact: {coding.impact || coding.issue?.impact || 'Medium'}</span>
                           </div>
+                          {coding?.files_involved?.length > 0 && (
+                            <div style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: '6px',
+                              marginTop: '12px'
+                            }}>
+                              <span style={{
+                                fontFamily: 'Geist Mono, monospace',
+                                fontSize: '9px',
+                                letterSpacing: '0.1em',
+                                textTransform: 'uppercase',
+                                color: 'var(--dim)',
+                                alignSelf: 'center',
+                                marginRight: '4px'
+                              }}>
+                                Files:
+                              </span>
+                              {coding.files_involved.map((file, i) => (
+                                <span key={i} style={{
+                                  fontFamily: 'Geist Mono, monospace',
+                                  fontSize: '10px',
+                                  color: 'var(--rust)',
+                                  border: '1px solid var(--border)',
+                                  padding: '2px 8px',
+                                  background: 'var(--paper2)'
+                                }}>
+                                  {file}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         <div className="card col-span-full">
@@ -1497,7 +1555,7 @@ const App = () => {
                         <div className="col-span-full bg-[#0a0a0a] p-0">
                           <div className="bg-[#111] border-b border-[#222] p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                             <span className="text-[10px] text-[#888] font-mono font-medium">{coding.files_involved?.[0] || 'unknown-file.js'}</span>
-                            <button onClick={() => { const diff = coding.code_changes?.[0]?.diff_lines?.map(l => l.content).join('\n') || ''; navigator.clipboard.writeText(diff); alert('Diff copied!'); }} className="label text-[#888] border border-[#333] px-3 py-1 font-semibold hover:text-[#bbb] transition-base">Copy Diff</button>
+                            <button onClick={() => { const diff = coding.code_changes?.[0]?.diff_lines?.map(l => l.content).join('\n') || ''; navigator.clipboard.writeText(diff); setCopiedDiff(true); setTimeout(() => setCopiedDiff(false), 2000); }} className="label text-[#888] border border-[#333] px-3 py-1 font-semibold hover:text-[#bbb] transition-base">{copiedDiff ? 'Copied ✓' : 'Copy Diff'}</button>
                           </div>
                           <div className="p-4 sm:p-6 font-mono text-[11px] leading-[1.9] overflow-x-auto font-normal">
                             {coding.code_changes?.[0]?.diff_lines?.map((line, i) => (
@@ -1514,7 +1572,7 @@ const App = () => {
                             <div className="text-[13px] font-semibold text-[var(--ink)]">{coding.pr_title || coding.pr?.title || 'Pull Request'}</div>
                             <p className="text-[10px] text-[var(--dim)] font-medium mt-2 leading-[1.6]">{coding.pr_description || coding.pr?.description || 'Description'}</p>
                           </div>
-                          <button onClick={() => { navigator.clipboard.writeText(coding.pr_title || ''); alert('PR title copied!'); }} className="w-full sm:w-auto label border border-[var(--border)] px-4 py-2 font-semibold">Copy PR</button>
+                          <button onClick={() => { navigator.clipboard.writeText(coding.pr_title || ''); setCopiedPR(true); setTimeout(() => setCopiedPR(false), 2000); }} className="w-full sm:w-auto label border border-[var(--border)] px-4 py-2 font-semibold">{copiedPR ? 'Copied ✓' : 'Copy PR'}</button>
                         </div>
                       </div>
                     )}
@@ -1525,7 +1583,43 @@ const App = () => {
 
             {activeTab === 'chat' && (
               <div className="animate-fade-up">
-                <label className="label">Ask Bob Anything</label>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{
+                    fontFamily: 'Geist Mono, monospace',
+                    fontSize: '9px',
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    color: 'var(--dim)'
+                  }}>
+                    Ask Bob Anything
+                  </div>
+                  {chatMessages.length > 1 && (
+                    <button
+                      onClick={() => setChatMessages([{
+                        role: 'bob',
+                        content: `I've analyzed ${analysis?.project_name || 'the repository'}. Ask me anything about the codebase.`
+                      }])}
+                      style={{
+                        fontFamily: 'Geist Mono, monospace',
+                        fontSize: '9px',
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        color: 'var(--dim)',
+                        background: 'none',
+                        border: '1px solid var(--border)',
+                        padding: '3px 10px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2 mt-4 mb-10">
                   {["How does routing work?", "Where to add auth?", "What does middleware do?", "How to add an API?"].map(q => (
                     <button key={q} onClick={() => handleSend(q)} className="label border border-[var(--border)] px-3 py-[6px] text-[var(--muted)] font-medium hover:border-[var(--gold)] hover:text-[var(--gold)] transition-base">{q}</button>
@@ -1541,7 +1635,27 @@ const App = () => {
                       <div key={i} className={`flex flex-col ${m.role === 'bob' ? 'items-start' : 'items-end'}`}>
                         {m.role === 'bob' && <label className="label text-[var(--sage)] mb-2 font-semibold">Bob · Ask Mode</label>}
                         <div className={`p-4 text-[11px] leading-[1.7] max-w-[85%] font-mono font-normal ${m.role === 'bob' ? 'bg-[var(--paper2)] border border-[var(--border)] text-[var(--ink)]' : 'bg-[var(--ink)] text-[var(--paper)]'}`}>
-                          {m.content}
+                          {(() => {
+                            if (!m.content) return m.content;
+                            const parts = m.content.split(/(`[^`]+`)/g);
+                            return parts.map((part, pi) => {
+                              if (part.startsWith('`') && part.endsWith('`')) {
+                                return (
+                                  <span key={pi} style={{
+                                    fontFamily: 'Geist Mono, monospace',
+                                    fontSize: '10px',
+                                    color: 'var(--rust)',
+                                    background: m.role === 'bob' ? 'var(--paper)' : 'rgba(255,255,255,0.1)',
+                                    border: '1px solid var(--border)',
+                                    padding: '1px 5px'
+                                  }}>
+                                    {part.replace(/`/g, '')}
+                                  </span>
+                                );
+                              }
+                              return <span key={pi}>{part}</span>;
+                            });
+                          })()}
                         </div>
                       </div>
                     ))}

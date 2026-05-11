@@ -4,6 +4,26 @@
 
 RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repositories and generates comprehensive onboarding reports using **IBM Bob**. Built for the **IBM Bob Hackathon**.
 
+## 🚀 Live Demo
+
+🌐 **App**: [https://reposense-blond.vercel.app](https://reposense-blond.vercel.app)
+🔧 **API**: [https://reposense-production-196a.up.railway.app/api/health](https://reposense-production-196a.up.railway.app/api/health)
+📂 **GitHub**: [https://github.com/RABNEER/Reposense](https://github.com/RABNEER/Reposense)
+
+## 🎯 Hackathon Submission
+
+**Event**: IBM Bob Hackathon — May 17-19, 2026
+**Theme**: Turn idea into impact faster
+**Live App**: https://reposense-blond.vercel.app
+**Team**: Ranveer Kumar — Team Apocalypto
+
+## 📸 Screenshots
+
+![Hero Page](docs/hero_page.png)
+![Loading](docs/loading_state.png)
+![Results](docs/results_page.png)
+![BobShell](docs/bobshell_terminal.png)
+
 ## 🎯 Problem We Solve
 
 Developers waste **weeks** understanding new codebases:
