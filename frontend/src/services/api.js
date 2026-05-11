@@ -18,16 +18,31 @@ function getConfigHeaders() {
   const mockMode = localStorage.getItem('mock_mode');
   const envMockMode = import.meta.env.VITE_MOCK_MODE || 'false';
 
-  return {
+  const headers = {
     'Content-Type': 'application/json',
-    'X-IBM-Bob-Key': getStoredValue('ibm_bob_key'),
-    'X-IBM-Bob-Base-Url': getStoredValue('ibm_bob_base_url', 'https://bob.ibm.com'),
-    'X-Gemini-Key': getStoredValue('gemini_key'),
-    'X-Groq-Key': getStoredValue('groq_key'),
-    'X-GitHub-Token': getStoredValue('github_token'),
     'X-AI-Provider': provider,
-    'X-Mock-Mode': mockMode !== null ? mockMode : envMockMode
+    'X-Mock-Mode': mockMode !== null ? mockMode : envMockMode,
   };
+
+  // Only include optional headers when they have real values
+  // Empty header values cause 400 Bad Request on many servers
+  const optionalHeaders = {
+    'X-IBM-Bob-Key': localStorage.getItem('ibm_bob_key'),
+    'X-IBM-Bob-Base-Url': localStorage.getItem('ibm_bob_base_url'),
+    'X-Gemini-Key': localStorage.getItem('gemini_key'),
+    'X-Groq-Key': localStorage.getItem('groq_key'),
+    'X-GitHub-Token': localStorage.getItem('github_token'),
+    'X-Watsonx-Key': localStorage.getItem('watsonx_key'),
+    'X-Watsonx-Project-Id': localStorage.getItem('watsonx_project_id'),
+  };
+
+  Object.entries(optionalHeaders).forEach(([key, value]) => {
+    if (value && value.trim()) {
+      headers[key] = value;
+    }
+  });
+
+  return headers;
 }
 
 async function request(endpoint, options = {}) {
@@ -39,7 +54,6 @@ async function request(endpoint, options = {}) {
       ...options,
       signal: controller.signal,
       headers: {
-        'Content-Type': 'application/json',
         ...getConfigHeaders(),
         ...options.headers,
       },

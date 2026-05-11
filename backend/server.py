@@ -128,8 +128,8 @@ class AnalyzeRequest(BaseModel):
     @field_validator("github_url")
     @classmethod
     def validate_github_url(cls, v):
-        if "github.com" not in v.lower():
-            raise ValueError("Must be a valid GitHub repository URL")
+        if not v or "github.com" not in v.lower():
+            raise ValueError("Must be a valid GitHub URL")
         return v
 
 
@@ -141,8 +141,8 @@ class AskRequest(BaseModel):
     @field_validator("github_url")
     @classmethod
     def validate_github_url(cls, v):
-        if "github.com" not in v.lower():
-            raise ValueError("Must be a valid GitHub repository URL")
+        if not v or "github.com" not in v.lower():
+            raise ValueError("Must be a valid GitHub URL")
         return v
 
 
@@ -152,8 +152,8 @@ class TaskRequest(BaseModel):
     @field_validator("github_url")
     @classmethod
     def validate_github_url(cls, v):
-        if "github.com" not in v.lower():
-            raise ValueError("Must be a valid GitHub repository URL")
+        if not v or "github.com" not in v.lower():
+            raise ValueError("Must be a valid GitHub URL")
         return v
 
 
@@ -163,8 +163,8 @@ class ExportRequest(BaseModel):
     @field_validator("github_url")
     @classmethod
     def validate_github_url(cls, v):
-        if "github.com" not in v.lower():
-            raise ValueError("Must be a valid GitHub repository URL")
+        if not v or "github.com" not in v.lower():
+            raise ValueError("Must be a valid GitHub URL")
         return v
 
 
