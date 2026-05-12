@@ -1,3 +1,12 @@
+class ApiError extends Error {
+  constructor(message, status, detail) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 function isMockMode() {

@@ -742,14 +742,15 @@ const App = () => {
           {aiProvider === 'bob' ? (
             <div className="space-y-4">
               <div>
-                <label className="label block mb-2">IBM Bob API Key</label>
+                <label className="label block mb-2">Watsonx API Key</label>
                 <input
                   type="password"
                   className="settings-input"
-                  placeholder="bob_prod_xxx..."
+                  placeholder="IBM Cloud API key"
                   value={ibmBobKey}
                   onChange={(e) => setIbmBobKey(e.target.value)}
                 />
+                <a className="settings-helper settings-link" href="https://www.ibm.com/watsonx" target="_blank" rel="noreferrer">Get free access at ibm.com/watsonx</a>
               </div>
               <div>
                 <label className="label block mb-2">IBM Bob Base URL</label>
@@ -1095,7 +1096,7 @@ const App = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-[1px]">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-[1px]">
                   <div className="card">
                     <label className="label">Architecture</label>
                     <div className="font-mono font-semibold text-[24px] mt-2 text-[var(--ink)]">{analysis?.architecture_type || 'MVC'}</div>
@@ -1103,6 +1104,10 @@ const App = () => {
                   <div className="card">
                     <label className="label">Files Analyzed</label>
                     <div className="font-mono font-semibold text-[24px] mt-2 text-[var(--ink)]">{analysis?.total_files || analysis?.file_tree_count || '247'}</div>
+                  </div>
+                  <div className="card">
+                    <label className="label">Complexity</label>
+                    <div className="font-serif text-[24px] mt-2" style={{ color: {'Low':'var(--sage)','Easy':'var(--sage)','Medium':'var(--gold)','High':'var(--rust)','Hard':'var(--rust)'}[analysis?.complexity] || 'var(--ink)' }}>{analysis?.complexity || 'Medium'}</div>
                   </div>
                 </div>
 
@@ -1209,6 +1214,21 @@ const App = () => {
 
                 <div className="card col-span-full">
                   <label className="label">Onboarding Steps · Bob Generated</label>
+                  {(() => {
+                    const totalSteps = analysis?.onboarding_steps?.length || 4;
+                    const progressPct = Math.round((checkedSteps.size / totalSteps) * 100);
+                    return (
+                      <div style={{margin: '12px 0'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:'6px'}}>
+                          <span style={{fontFamily:'Geist Mono, monospace',fontSize:'9px',letterSpacing:'0.1em',textTransform:'uppercase',color:'var(--dim)'}}>Progress</span>
+                          <span style={{fontFamily:'Geist Mono, monospace',fontSize:'9px',color: checkedSteps.size === totalSteps ? 'var(--sage)' : 'var(--dim)'}}>{checkedSteps.size}/{totalSteps} steps</span>
+                        </div>
+                        <div style={{height:'2px',background:'var(--border)',borderRadius:'1px'}}>
+                          <div style={{height:'100%',width:`${progressPct}%`,background: checkedSteps.size === totalSteps ? 'var(--sage)' : 'var(--gold)',borderRadius:'1px',transition:'width 300ms ease'}} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="mt-4 space-y-[1px]">
                     {analysis?.onboarding_steps?.map((step, i) => (
                       <div
@@ -1666,12 +1686,14 @@ const App = () => {
                     <input
                       type="text"
                       className="flex-1 bg-[var(--paper2)] px-6 py-5 text-[12px] font-mono font-normal outline-none focus:bg-[var(--paper)] transition-base text-[var(--ink)]"
-                      placeholder="Ask a question..."
+                      placeholder={isTyping ? 'Bob is thinking...' : 'Ask a question...'}
                       value={chatInput}
+                      disabled={isTyping}
+                      style={{ opacity: isTyping ? 0.5 : 1, cursor: isTyping ? 'not-allowed' : 'text' }}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     />
-                    <button onClick={() => handleSend()} className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-10 py-4 sm:py-0 label font-semibold transition-base">Send</button>
+                    <button onClick={() => handleSend()} disabled={isTyping} className="w-full sm:w-auto bg-[var(--ink)] text-[var(--paper)] px-10 py-4 sm:py-0 label font-semibold transition-base disabled:opacity-50 disabled:cursor-not-allowed">Send</button>
                   </div>
                 </div>
               </div>
@@ -1679,6 +1701,10 @@ const App = () => {
           </main>
         </div>
       )}
+      <footer style={{borderTop:'1px solid var(--border)',padding:'16px 40px',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--paper)',marginTop:'auto'}}>
+        <span style={{fontFamily:'Geist Mono, monospace',fontSize:'9px',letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--dim)'}}>RepoSense — Turn idea into impact faster</span>
+        <span style={{fontFamily:'Geist Mono, monospace',fontSize:'9px',letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--dim)',border:'1px solid var(--border)',padding:'3px 10px'}}>Made with IBM Bob</span>
+      </footer>
       {toast && (
         <div style={{
           position: 'fixed',
