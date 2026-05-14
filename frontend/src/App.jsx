@@ -84,11 +84,11 @@ const App = () => {
   // ─── EFFECTS ───
   useEffect(() => {
     if (appState === 'loading') {
-      const stepInterval = setInterval(() => {\r
-        setCurrentStep(prev => prev < steps.length - 1 ? prev + 1 : prev);\r
-      }, 1500);\r
-      const tipInterval = setInterval(() => {\r
-        setCurrentTip(prev => (prev + 1) % tips.length);\r
+      const stepInterval = setInterval(() => {
+        setCurrentStep(prev => prev < steps.length - 1 ? prev + 1 : prev);
+      }, 1500);
+      const tipInterval = setInterval(() => {
+        setCurrentTip(prev => (prev + 1) % tips.length);
       }, 3000);
 
       const performAnalysis = async () => {
