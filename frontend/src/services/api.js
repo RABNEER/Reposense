@@ -23,7 +23,7 @@ function getStoredValue(key, fallback = '') {
 }
 
 function getConfigHeaders() {
-  const provider = localStorage.getItem('ai_provider') || 'openrouter';
+  const provider = localStorage.getItem('ai_provider') || 'groq';
   const mockMode = localStorage.getItem('mock_mode');
   const envMockMode = import.meta.env.VITE_MOCK_MODE || 'false';
 

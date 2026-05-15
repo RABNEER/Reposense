@@ -136,7 +136,7 @@ def get_ai_client(
     selected_bob_key = (bob_key if bob_key is not None else BOB_API_KEY) or ""
     selected_openrouter_key = (openrouter_key if openrouter_key is not None else OPENROUTER_API_KEY) or ""
     selected_groq_key = (groq_key if groq_key is not None else GROQ_API_KEY) or ""
-    selected_provider = (provider or "openrouter").lower()
+    selected_provider = (provider or "groq").lower()
     selected_mock = str(mock_mode or "").lower() == "true"
 
     if selected_mock:
@@ -159,19 +159,19 @@ def get_ai_client(
     if selected_bob_key and selected_bob_key != "mock":
         return BobClient(api_key=selected_bob_key, base_url=bob_base_url or WATSONX_URL, project_id=watsonx_project_id or WATSONX_PROJECT_ID)
 
-    if selected_openrouter_key:
-        try:
-            from backend.openrouter_client import OpenRouterClient
-        except ImportError:
-            from openrouter_client import OpenRouterClient
-        return OpenRouterClient(api_key=selected_openrouter_key)
-
     if selected_groq_key:
         try:
             from backend.groq_client import GroqClient
         except ImportError:
             from groq_client import GroqClient
         return GroqClient(api_key=selected_groq_key)
+
+    if selected_openrouter_key:
+        try:
+            from backend.openrouter_client import OpenRouterClient
+        except ImportError:
+            from openrouter_client import OpenRouterClient
+        return OpenRouterClient(api_key=selected_openrouter_key)
 
     return None
 

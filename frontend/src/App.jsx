@@ -35,7 +35,7 @@ const App = () => {
   const [checkedSteps, setCheckedSteps] = useState(new Set());
   const [activeMode, setActiveMode] = useState(-1);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [aiProvider, setAiProvider] = useState(() => readStoredConfig('ai_provider', 'openrouter'));
+  const [aiProvider, setAiProvider] = useState(() => readStoredConfig('ai_provider', 'groq'));
   const [ibmBobKey, setIbmBobKey] = useState(() => readStoredConfig('ibm_bob_key'));
   const [ibmBobBaseUrl, setIbmBobBaseUrl] = useState(() => readStoredConfig('ibm_bob_base_url', 'https://bob.ibm.com'));
   const [watsonxKey, setWatsonxKey] = useState(() => readStoredConfig('watsonx_key'));
@@ -44,7 +44,7 @@ const App = () => {
   const [openrouterKey, setOpenRouterKey] = useState(() => readStoredConfig('openrouter_key'));
   const [groqKey, setGroqKey] = useState(() => readStoredConfig('groq_key'));
   const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
-  const [mockModeToggle, setMockModeToggle] = useState(() => readStoredConfig('mock_mode', 'true') === 'true');
+  const [mockModeToggle, setMockModeToggle] = useState(() => readStoredConfig('mock_mode', 'false') === 'true');
   const [mockModeManualOverride, setMockModeManualOverride] = useState(false);
   const [toast, setToast] = useState(null); // { message, type }
 
@@ -188,7 +188,7 @@ const App = () => {
 
   useEffect(() => {
     if (settingsOpen) {
-      setAiProvider(localStorage.getItem('ai_provider') || 'openrouter');
+      setAiProvider(localStorage.getItem('ai_provider') || 'groq');
       setIbmBobKey(localStorage.getItem('ibm_bob_key') || '');
       setIbmBobBaseUrl(localStorage.getItem('ibm_bob_base_url') || 'https://bob.ibm.com');
       setWatsonxKey(localStorage.getItem('watsonx_key') || '');
@@ -198,7 +198,7 @@ const App = () => {
       setGroqKey(localStorage.getItem('groq_key') || '');
       setGithubToken(localStorage.getItem('github_token') || '');
       const stored = localStorage.getItem('mock_mode');
-      setMockModeToggle(stored !== null ? stored === 'true' : true);
+      setMockModeToggle(stored !== null ? stored === 'true' : false);
       setMockModeManualOverride(false);
     }
   }, [settingsOpen]);
@@ -465,7 +465,7 @@ const App = () => {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-');
-  const hasCustomApi = Boolean(ibmBobKey.trim() || watsonxKey.trim() || openrouterKey.trim() || githubToken.trim());
+  const hasCustomApi = Boolean(ibmBobKey.trim() || watsonxKey.trim() || openrouterKey.trim() || groqKey.trim() || githubToken.trim());
   const apiStatus = mockModeToggle
     ? { label: '○ DEMO — Mock', color: 'var(--gold)' }
     : aiProvider === 'openrouter'
