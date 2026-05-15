@@ -735,7 +735,7 @@ const App = () => {
           <label className="label block mb-3">AI Provider</label>
           <div className="flex gap-2 mb-5">
             {[
-              { id: 'bob', label: 'IBM Bob' },
+              { id: 'bob', label: 'IBM' },
               { id: 'openrouter', label: 'OpenRouter' },
               { id: 'groq', label: 'Groq' }
             ].map(option => (
@@ -1132,7 +1132,7 @@ const App = () => {
                   </div>
                   <div className="card">
                     <label className="label">Complexity</label>
-                    <div className="font-serif text-[24px] mt-2" style={{ color: {'Low':'var(--sage)','Easy':'var(--sage)','Medium':'var(--gold)','High':'var(--rust)','Hard':'var(--rust)'}[analysis?.complexity] || 'var(--ink)' }}>{analysis?.complexity || 'Medium'}</div>
+                    <div className="font-serif text-[24px] mt-2" style={{ color: { 'Low': 'var(--sage)', 'Easy': 'var(--sage)', 'Medium': 'var(--gold)', 'High': 'var(--rust)', 'Hard': 'var(--rust)' }[analysis?.complexity] || 'var(--ink)' }}>{analysis?.complexity || 'Medium'}</div>
                   </div>
                 </div>
 
@@ -1243,13 +1243,13 @@ const App = () => {
                     const totalSteps = analysis?.onboarding_steps?.length || 4;
                     const progressPct = Math.round((checkedSteps.size / totalSteps) * 100);
                     return (
-                      <div style={{margin: '12px 0'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:'6px'}}>
-                          <span style={{fontFamily:'Geist Mono, monospace',fontSize:'9px',letterSpacing:'0.1em',textTransform:'uppercase',color:'var(--dim)'}}>Progress</span>
-                          <span style={{fontFamily:'Geist Mono, monospace',fontSize:'9px',color: checkedSteps.size === totalSteps ? 'var(--sage)' : 'var(--dim)'}}>{checkedSteps.size}/{totalSteps} steps</span>
+                      <div style={{ margin: '12px 0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span style={{ fontFamily: 'Geist Mono, monospace', fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--dim)' }}>Progress</span>
+                          <span style={{ fontFamily: 'Geist Mono, monospace', fontSize: '9px', color: checkedSteps.size === totalSteps ? 'var(--sage)' : 'var(--dim)' }}>{checkedSteps.size}/{totalSteps} steps</span>
                         </div>
-                        <div style={{height:'2px',background:'var(--border)',borderRadius:'1px'}}>
-                          <div style={{height:'100%',width:`${progressPct}%`,background: checkedSteps.size === totalSteps ? 'var(--sage)' : 'var(--gold)',borderRadius:'1px',transition:'width 300ms ease'}} />
+                        <div style={{ height: '2px', background: 'var(--border)', borderRadius: '1px' }}>
+                          <div style={{ height: '100%', width: `${progressPct}%`, background: checkedSteps.size === totalSteps ? 'var(--sage)' : 'var(--gold)', borderRadius: '1px', transition: 'width 300ms ease' }} />
                         </div>
                       </div>
                     );
@@ -1726,9 +1726,9 @@ const App = () => {
           </main>
         </div>
       )}
-      <footer style={{borderTop:'1px solid var(--border)',padding:'16px 40px',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--paper)',marginTop:'auto'}}>
-        <span style={{fontFamily:'Geist Mono, monospace',fontSize:'9px',letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--dim)'}}>RepoSense — Turn idea into impact faster</span>
-        <span style={{fontFamily:'Geist Mono, monospace',fontSize:'9px',letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--dim)',border:'1px solid var(--border)',padding:'3px 10px'}}>Made with IBM Bob</span>
+      <footer style={{ borderTop: '1px solid var(--border)', padding: '16px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--paper)', marginTop: 'auto' }}>
+        <span style={{ fontFamily: 'Geist Mono, monospace', fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--dim)' }}>RepoSense — Turn idea into impact faster</span>
+        <span style={{ fontFamily: 'Geist Mono, monospace', fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--dim)', border: '1px solid var(--border)', padding: '3px 10px' }}>Made with IBM Bob</span>
       </footer>
       {toast && (
         <div style={{
