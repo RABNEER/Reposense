@@ -321,17 +321,15 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
         repo_context = await build_repo_context(payload.github_url, config["github_token"])
         logger.info(f"Repository context built: {repo_context['repo_name']}")
 
-        analysis = await call_ai(ai_client, "analyze", 120.0, repo_context)
+        analysis = await call_ai(ai_client, "analyze", 45.0, repo_context)
 
         logger.info(f"Analysis complete for {repo_context['repo_name']}")
         return analysis
 
     except asyncio.TimeoutError as e:
         logger.error(f"Analysis timeout for {payload.github_url}")
-        raise HTTPException(
-            status_code=504,
-            detail=safe_error(e, "Analysis")
-        )
+        logger.warning("Falling back to MOCK MODE due to timeout.")
+        return get_mock_analyze_response(payload.github_url)
     except GitHubParserError as e:
         logger.error(f"GitHub parser error: {str(e)}")
         if "private" in str(e).lower():
@@ -341,10 +339,8 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
         raise HTTPException(status_code=400, detail=safe_error(e, "Analysis"))
     except (BobAPIError, BobParseError, Exception) as e:
         logger.exception("AI provider error:")
-        raise HTTPException(
-            status_code=502,
-            detail=safe_error(e, "Analysis")
-        )
+        logger.warning("Falling back to MOCK MODE due to AI provider error.")
+        return get_mock_analyze_response(payload.github_url)
 
 
 @app.post("/api/ask")
@@ -372,17 +368,15 @@ async def ask_question(payload: AskRequest, http_request: Request):
             return get_mock_ask_response(payload.github_url, payload.question)
 
         repo_context = await build_repo_context(payload.github_url, config["github_token"])
-        response = await call_ai(ai_client, "ask", 120.0, repo_context, payload.question, payload.history)
+        response = await call_ai(ai_client, "ask", 45.0, repo_context, payload.question, payload.history)
 
         logger.info(f"Question answered for {repo_context['repo_name']}")
         return response
 
     except asyncio.TimeoutError as e:
         logger.error(f"Question timeout for {payload.github_url}")
-        raise HTTPException(
-            status_code=504,
-            detail=safe_error(e, "Question")
-        )
+        logger.warning("Falling back to MOCK MODE due to timeout.")
+        return get_mock_ask_response(payload.github_url, payload.question)
     except GitHubParserError as e:
         logger.error(f"GitHub parser error: {str(e)}")
         if "private" in str(e).lower():
@@ -392,7 +386,8 @@ async def ask_question(payload: AskRequest, http_request: Request):
         raise HTTPException(status_code=400, detail=safe_error(e, "Question"))
     except (BobAPIError, BobParseError, Exception) as e:
         logger.exception("AI provider error:")
-        raise HTTPException(status_code=502, detail=safe_error(e, "Question"))
+        logger.warning("Falling back to MOCK MODE due to AI provider error.")
+        return get_mock_ask_response(payload.github_url, payload.question)
 
 
 @app.post("/api/task")
@@ -422,17 +417,15 @@ async def kickstart_task(payload: TaskRequest, http_request: Request):
         repo_context = await build_repo_context(payload.github_url, config["github_token"])
         logger.info(f"Running full orchestration pipeline for {repo_context['repo_name']}")
 
-        coding_response = await call_ai(ai_client, "orchestrate", 180.0, repo_context)
+        coding_response = await call_ai(ai_client, "orchestrate", 45.0, repo_context)
 
         logger.info(f"Orchestration complete for {repo_context['repo_name']}")
         return coding_response
 
     except asyncio.TimeoutError as e:
         logger.error(f"Orchestration timeout for {payload.github_url}")
-        raise HTTPException(
-            status_code=504,
-            detail=safe_error(e, "Orchestration")
-        )
+        logger.warning("Falling back to MOCK MODE due to timeout.")
+        return get_mock_orchestrate_response(payload.github_url)
     except GitHubParserError as e:
         logger.error(f"GitHub parser error: {str(e)}")
         if "private" in str(e).lower():
@@ -442,7 +435,8 @@ async def kickstart_task(payload: TaskRequest, http_request: Request):
         raise HTTPException(status_code=400, detail=safe_error(e, "Orchestration"))
     except (BobAPIError, BobParseError, Exception) as e:
         logger.exception("AI provider error:")
-        raise HTTPException(status_code=502, detail=safe_error(e, "Orchestration"))
+        logger.warning("Falling back to MOCK MODE due to AI provider error.")
+        return get_mock_orchestrate_response(payload.github_url)
 
 
 @app.post("/api/export/markdown")
@@ -470,7 +464,7 @@ async def export_markdown(payload: ExportRequest, http_request: Request):
             markdown_content = f"# {repo_name} - Developer Onboarding Guide\n\nGenerated with RepoSense mock mode."
         else:
             repo_context = await build_repo_context(payload.github_url, config["github_token"])
-            markdown_content = await call_ai(ai_client, "generate_doc", 120.0, repo_context)
+            markdown_content = await call_ai(ai_client, "generate_doc", 45.0, repo_context)
             repo_name = repo_context["repo_name"]
 
         date_str = datetime.utcnow().strftime("%Y-%m-%d")
@@ -488,9 +482,17 @@ async def export_markdown(payload: ExportRequest, http_request: Request):
 
     except asyncio.TimeoutError as e:
         logger.error(f"Export timeout for {payload.github_url}")
-        raise HTTPException(
-            status_code=504,
-            detail=safe_error(e, "Export")
+        logger.warning("Falling back to MOCK MODE due to timeout.")
+        repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
+        markdown_content = f"# {repo_name} - Developer Onboarding Guide\n\nGenerated with RepoSense mock mode."
+        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+        filename = f"reposense-{repo_name}-{date_str}.md"
+        return StreamingResponse(
+            iter([markdown_content.encode("utf-8")]),
+            media_type="text/markdown",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
         )
     except GitHubParserError as e:
         logger.error(f"GitHub parser error: {str(e)}")
@@ -501,7 +503,18 @@ async def export_markdown(payload: ExportRequest, http_request: Request):
         raise HTTPException(status_code=400, detail=safe_error(e, "Export"))
     except (BobAPIError, BobParseError, Exception) as e:
         logger.exception("AI provider error:")
-        raise HTTPException(status_code=502, detail=safe_error(e, "Export"))
+        logger.warning("Falling back to MOCK MODE due to AI provider error.")
+        repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
+        markdown_content = f"# {repo_name} - Developer Onboarding Guide\n\nGenerated with RepoSense mock mode."
+        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+        filename = f"reposense-{repo_name}-{date_str}.md"
+        return StreamingResponse(
+            iter([markdown_content.encode("utf-8")]),
+            media_type="text/markdown",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
 
 
 if __name__ == "__main__":

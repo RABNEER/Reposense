@@ -70,7 +70,7 @@ def fetch_repo_metadata(owner: str, repo: str, token: Optional[str] = None) -> D
         headers["Authorization"] = f"token {token}"
     
     try:
-        response = httpx.get(url, headers=headers, timeout=30.0, follow_redirects=True)
+        response = httpx.get(url, headers=headers, timeout=10.0, follow_redirects=True)
         
         if response.status_code == 404:
             raise GitHubParserError(f"Repository {owner}/{repo} not found")
@@ -146,7 +146,7 @@ def fetch_file_tree(owner: str, repo: str, branch: str, token: Optional[str] = N
     ]
     
     try:
-        response = httpx.get(url, headers=headers, timeout=30.0, follow_redirects=True)
+        response = httpx.get(url, headers=headers, timeout=10.0, follow_redirects=True)
         
         if response.status_code == 404:
             raise GitHubParserError(f"Branch '{branch}' not found in repository")
@@ -330,7 +330,7 @@ async def fetch_key_files_async(
                 return filepath, f"[File too large: {file_info['size']} bytes]"
 
             url = f"https://api.github.com/repos/{owner}/{repo}/contents/{filepath}"
-            response = await client.get(url, headers=headers, timeout=15.0)
+            response = await client.get(url, headers=headers, timeout=5.0)
 
             if response.status_code == 200:
                 content = response.text
@@ -345,7 +345,7 @@ async def fetch_key_files_async(
 
     file_path_map = {f["path"]: f for f in file_tree}
 
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
         tasks = [
             fetch_single(
                 client,
