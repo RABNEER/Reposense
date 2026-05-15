@@ -765,7 +765,7 @@ const App = () => {
                 <a className="settings-helper settings-link" href="https://cloud.ibm.com/iam/apikeys" target="_blank" rel="noreferrer">Generate at cloud.ibm.com/iam/apikeys</a>
               </div>
               <div>
-                <label className="label block mb-2">Watsonx Project ID</label>
+                <label className="label block mb-2">Watsonx Project ID / Space ID</label>
                 <input
                   type="text"
                   className="settings-input"
@@ -773,11 +773,11 @@ const App = () => {
                   value={watsonxProjectId}
                   onChange={(e) => setWatsonxProjectId(e.target.value)}
                 />
-                <p className="settings-helper mt-1">Found in your Watsonx.ai project → Manage → General → Project ID</p>
+                <p className="settings-helper mt-1">Found in your Watsonx.ai project → Manage → General</p>
                 <a className="settings-helper settings-link" href="https://dataplatform.cloud.ibm.com/projects" target="_blank" rel="noreferrer">Find at dataplatform.cloud.ibm.com</a>
               </div>
               <div>
-                <label className="label block mb-2">Watsonx URL (Region)</label>
+                <label className="label block mb-2">Watsonx URL (Service Instance URL)</label>
                 <input
                   type="text"
                   className="settings-input"
@@ -785,7 +785,7 @@ const App = () => {
                   value={watsonxUrl}
                   onChange={(e) => setWatsonxUrl(e.target.value)}
                 />
-                <p className="settings-helper mt-1">Default: us-south. Change for eu-de, jp-tok, etc.</p>
+                <p className="settings-helper mt-1">Example: https://us-south.ml.cloud.ibm.com or https://eu-de.ml.cloud.ibm.com</p>
               </div>
             </div>
           ) : aiProvider === 'gemini' ? (
