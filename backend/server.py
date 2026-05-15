@@ -102,6 +102,9 @@ app.add_middleware(
         "X-Mock-Mode",
         "X-GitHub-Token",
         "X-Groq-Key",
+        "X-Watsonx-Key",
+        "X-Watsonx-Project-Id",
+        "X-Watsonx-Url",
     ],
     expose_headers=["*"],
     max_age=86400
@@ -203,9 +206,14 @@ def safe_error(e: Exception, context: str = "") -> str:
 
 def get_request_config(http_request: Request) -> dict:
     headers = http_request.headers
+    # Watsonx credentials: prefer dedicated X-Watsonx-* headers, fall back to X-IBM-Bob-Key / env
+    watsonx_key = headers.get("X-Watsonx-Key") or headers.get("X-IBM-Bob-Key") or os.getenv("IBM_BOB_API_KEY", os.getenv("WATSONX_API_KEY", ""))
+    watsonx_project_id = headers.get("X-Watsonx-Project-Id") or os.getenv("WATSONX_PROJECT_ID", "")
+    watsonx_url = headers.get("X-Watsonx-Url") or headers.get("X-IBM-Bob-Base-Url") or os.getenv("WATSONX_URL", "https://us-south.ml.cloud.ibm.com")
     return {
-        "bob_key": headers.get("X-IBM-Bob-Key") or os.getenv("IBM_BOB_API_KEY", ""),
-        "bob_base_url": headers.get("X-IBM-Bob-Base-Url") or os.getenv("IBM_BOB_BASE_URL", "https://bob.ibm.com"),
+        "bob_key": watsonx_key,
+        "bob_base_url": watsonx_url,
+        "watsonx_project_id": watsonx_project_id,
         "gemini_key": headers.get("X-Gemini-Key") or os.getenv("GEMINI_API_KEY", ""),
         "groq_key": headers.get("X-Groq-Key") or os.getenv("GROQ_API_KEY", ""),
         "github_token": headers.get("X-GitHub-Token") or os.getenv("GITHUB_TOKEN"),

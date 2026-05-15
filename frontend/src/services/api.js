@@ -43,6 +43,7 @@ function getConfigHeaders() {
     'X-GitHub-Token': localStorage.getItem('github_token'),
     'X-Watsonx-Key': localStorage.getItem('watsonx_key'),
     'X-Watsonx-Project-Id': localStorage.getItem('watsonx_project_id'),
+    'X-Watsonx-Url': localStorage.getItem('watsonx_url'),
   };
 
   Object.entries(optionalHeaders).forEach(([key, value]) => {

@@ -38,6 +38,9 @@ const App = () => {
   const [aiProvider, setAiProvider] = useState(() => readStoredConfig('ai_provider', 'bob'));
   const [ibmBobKey, setIbmBobKey] = useState(() => readStoredConfig('ibm_bob_key'));
   const [ibmBobBaseUrl, setIbmBobBaseUrl] = useState(() => readStoredConfig('ibm_bob_base_url', 'https://bob.ibm.com'));
+  const [watsonxKey, setWatsonxKey] = useState(() => readStoredConfig('watsonx_key'));
+  const [watsonxProjectId, setWatsonxProjectId] = useState(() => readStoredConfig('watsonx_project_id'));
+  const [watsonxUrl, setWatsonxUrl] = useState(() => readStoredConfig('watsonx_url', 'https://us-south.ml.cloud.ibm.com'));
   const [geminiKey, setGeminiKey] = useState(() => readStoredConfig('gemini_key'));
   const [groqKey, setGroqKey] = useState(() => readStoredConfig('groq_key'));
   const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
@@ -162,6 +165,9 @@ const App = () => {
       setAiProvider(localStorage.getItem('ai_provider') || 'bob');
       setIbmBobKey(localStorage.getItem('ibm_bob_key') || '');
       setIbmBobBaseUrl(localStorage.getItem('ibm_bob_base_url') || 'https://bob.ibm.com');
+      setWatsonxKey(localStorage.getItem('watsonx_key') || '');
+      setWatsonxProjectId(localStorage.getItem('watsonx_project_id') || '');
+      setWatsonxUrl(localStorage.getItem('watsonx_url') || 'https://us-south.ml.cloud.ibm.com');
       setGeminiKey(localStorage.getItem('gemini_key') || '');
       setGroqKey(localStorage.getItem('groq_key') || '');
       setGithubToken(localStorage.getItem('github_token') || '');
@@ -175,10 +181,11 @@ const App = () => {
     if (!settingsOpen || mockModeManualOverride) return;
     const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
     const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
+    const hasWatsonxKey = watsonxKey && watsonxKey.trim().length > 0;
     const hasGroqKey = groqKey && groqKey.trim().length > 0;
-    const hasAnyKey = hasGeminiKey || hasBobKey || hasGroqKey;
+    const hasAnyKey = hasGeminiKey || hasBobKey || hasWatsonxKey || hasGroqKey;
     setMockModeToggle(!hasAnyKey);
-  }, [settingsOpen, geminiKey, ibmBobKey, groqKey, mockModeManualOverride]);
+  }, [settingsOpen, geminiKey, ibmBobKey, watsonxKey, groqKey, mockModeManualOverride]);
 
   // ─── HANDLERS ───
   const normalizeGithubUrl = (value) => {
@@ -360,15 +367,19 @@ const App = () => {
     localStorage.setItem('ai_provider', aiProvider);
     localStorage.setItem('ibm_bob_key', ibmBobKey.trim());
     localStorage.setItem('ibm_bob_base_url', ibmBobBaseUrl.trim());
+    localStorage.setItem('watsonx_key', watsonxKey.trim());
+    localStorage.setItem('watsonx_project_id', watsonxProjectId.trim());
+    localStorage.setItem('watsonx_url', watsonxUrl.trim());
     localStorage.setItem('gemini_key', geminiKey.trim());
     localStorage.setItem('groq_key', groqKey.trim());
     localStorage.setItem('github_token', githubToken.trim());
 
     // Auto-set mock mode based on keys
     const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
+    const hasWatsonxKey = watsonxKey && watsonxKey.trim().length > 0;
     const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
     const hasGroqKey = groqKey && groqKey.trim().length > 0;
-    const hasAnyKey = hasBobKey || hasGeminiKey || hasGroqKey;
+    const hasAnyKey = hasBobKey || hasWatsonxKey || hasGeminiKey || hasGroqKey;
 
     if (hasAnyKey) {
       localStorage.setItem('mock_mode', 'false');
@@ -422,7 +433,7 @@ const App = () => {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-');
-  const hasCustomApi = Boolean(ibmBobKey.trim() || geminiKey.trim() || githubToken.trim());
+  const hasCustomApi = Boolean(ibmBobKey.trim() || watsonxKey.trim() || geminiKey.trim() || githubToken.trim());
   const apiStatus = mockModeToggle
     ? { label: '○ DEMO — Mock', color: 'var(--gold)' }
     : aiProvider === 'gemini'
@@ -746,21 +757,35 @@ const App = () => {
                 <input
                   type="password"
                   className="settings-input"
-                  placeholder="IBM Cloud API key"
-                  value={ibmBobKey}
-                  onChange={(e) => setIbmBobKey(e.target.value)}
+                  placeholder="Your IBM Cloud API key"
+                  value={watsonxKey}
+                  onChange={(e) => setWatsonxKey(e.target.value)}
                 />
-                <a className="settings-helper settings-link" href="https://www.ibm.com/watsonx" target="_blank" rel="noreferrer">Get free access at ibm.com/watsonx</a>
+                <p className="settings-helper mt-1">From IBM Cloud → Manage → Access (IAM) → API keys</p>
+                <a className="settings-helper settings-link" href="https://cloud.ibm.com/iam/apikeys" target="_blank" rel="noreferrer">Generate at cloud.ibm.com/iam/apikeys</a>
               </div>
               <div>
-                <label className="label block mb-2">IBM Bob Base URL</label>
+                <label className="label block mb-2">Watsonx Project ID</label>
                 <input
                   type="text"
                   className="settings-input"
-                  placeholder="https://bob.ibm.com"
-                  value={ibmBobBaseUrl}
-                  onChange={(e) => setIbmBobBaseUrl(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={watsonxProjectId}
+                  onChange={(e) => setWatsonxProjectId(e.target.value)}
                 />
+                <p className="settings-helper mt-1">Found in your Watsonx.ai project → Manage → General → Project ID</p>
+                <a className="settings-helper settings-link" href="https://dataplatform.cloud.ibm.com/projects" target="_blank" rel="noreferrer">Find at dataplatform.cloud.ibm.com</a>
+              </div>
+              <div>
+                <label className="label block mb-2">Watsonx URL (Region)</label>
+                <input
+                  type="text"
+                  className="settings-input"
+                  placeholder="https://us-south.ml.cloud.ibm.com"
+                  value={watsonxUrl}
+                  onChange={(e) => setWatsonxUrl(e.target.value)}
+                />
+                <p className="settings-helper mt-1">Default: us-south. Change for eu-de, jp-tok, etc.</p>
               </div>
             </div>
           ) : aiProvider === 'gemini' ? (
