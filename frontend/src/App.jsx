@@ -284,14 +284,14 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (!shellStarted || !shellDone || !coding || shellHidden || shellExiting) return;
+    if (!shellStarted || !shellDone || shellHidden || shellExiting) return;
     setShellExiting(true);
     const timeout = setTimeout(() => {
       setShellHidden(true);
       setShellExiting(false);
     }, 460);
     return () => clearTimeout(timeout);
-  }, [shellStarted, shellDone, coding, shellHidden, shellExiting]);
+  }, [shellStarted, shellDone, shellHidden, shellExiting]);
 
   const handleAnalyze = () => {
     if (analyzingRef.current) return;
@@ -467,6 +467,14 @@ const App = () => {
         : { label: '● LIVE — IBM Bob', color: 'var(--sage)' };
 
   // ─── STYLES ───
+  const activeModel = mockModeToggle
+    ? 'mock-engine'
+    : aiProvider === 'openrouter'
+      ? 'ibm/granite-4.1-8b-instruct'
+      : aiProvider === 'groq'
+        ? 'llama-3.3-70b-versatile'
+        : 'meta-llama/llama-3-3-70b-instruct';
+
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500;600&display=swap');
 
@@ -730,7 +738,7 @@ const App = () => {
           {apiStatus.label}
         </div>
         <div className="hidden md:block label border border-[var(--border)] px-[14px] py-[6px] leading-none text-[10px] text-[var(--ink)] font-medium">
-          Powered by IBM Bob
+          Model: {activeModel}
         </div>
         <button
           type="button"
@@ -1554,8 +1562,27 @@ const App = () => {
                       </div>
                     )}
 
-                    {coding && shellDone && shellHidden && (
+                    {shellDone && shellHidden && !coding && (
+                      <div className="card animate-fade-up">
+                        <label className="label">Bob · Orchestrator</label>
+                        <h3 className="font-serif text-[22px] mt-4 mb-2">Finalizing pull request output...</h3>
+                        <p className="text-[11px] text-[var(--muted)] font-normal leading-[1.7]">
+                          Terminal run is complete. Bob is assembling the issue summary, diff, and PR details.
+                        </p>
+                      </div>
+                    )}
+
+                    {shellDone && shellHidden && coding && (
                       <div className="card-grid animate-fade-up">
+                        {false && (
+                          <div className="card col-span-full">
+                            <label className="label">Bob · Orchestrator</label>
+                            <h3 className="font-serif text-[22px] mt-4 mb-2">Finalizing pull request output...</h3>
+                            <p className="text-[11px] text-[var(--muted)] font-normal leading-[1.7]">
+                              Terminal run is complete. Bob is assembling the issue summary, diff, and PR details.
+                            </p>
+                          </div>
+                        )}
                         <div className="card col-span-full">
                           <label className="label">Bob · Orchestrator Mode · Issue Found</label>
                           <h3 className="font-serif text-[22px] mt-4 mb-2">{coding.issue_title || coding.issue?.title || 'Issue'}</h3>
