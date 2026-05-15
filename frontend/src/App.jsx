@@ -214,7 +214,7 @@ const App = () => {
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   useEffect(() => {
-    if (!codingLoading) return;
+    if (!codingLoading || shellStarted) return;
 
     const runId = shellRunRef.current + 1;
     shellRunRef.current = runId;
@@ -266,7 +266,7 @@ const App = () => {
     };
 
     run();
-  }, [codingLoading, repoUrl]);
+  }, [codingLoading, shellStarted, repoUrl]);
 
   useEffect(() => {
     return () => {
@@ -1497,8 +1497,8 @@ const App = () => {
                       </div>
                     )}
 
-                    {coding && (
-                      <div className="card-grid">
+                    {coding && shellDone && (
+                      <div className="card-grid animate-fade-up">
                         <div className="card col-span-full">
                           <label className="label">Bob · Orchestrator Mode · Issue Found</label>
                           <h3 className="font-serif text-[22px] mt-4 mb-2">{coding.issue_title || coding.issue?.title || 'Issue'}</h3>
