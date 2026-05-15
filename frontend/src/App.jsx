@@ -22,8 +22,6 @@ const App = () => {
   const [typingText, setTypingText] = useState('');
   const [shellDone, setShellDone] = useState(false);
   const [shellStarted, setShellStarted] = useState(false);
-  const [shellExiting, setShellExiting] = useState(false);
-  const [shellHidden, setShellHidden] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
@@ -89,8 +87,36 @@ const App = () => {
   // ─── EFFECTS ───
   useEffect(() => {
     if (appState === 'loading') {
+      let isActive = true;
+      let loadingSequenceDone = false;
+      let analysisData = null;
+      let analysisElapsed = null;
+
+      const maybeShowResults = () => {
+        if (!isActive) return;
+        if (!loadingSequenceDone || !analysisData) return;
+
+        if (analysisElapsed) {
+          setElapsedTime(analysisElapsed);
+        }
+        setAnalysis(analysisData);
+        analyzingRef.current = false;
+        setAppState('results');
+        setChatMessages([{
+          role: 'bob',
+          content: `I've analyzed ${analysisData.repo_name || 'the repository'}. Ask me anything about the codebase — architecture, specific files, or how to implement new features.`
+        }]);
+      };
+
       const stepInterval = setInterval(() => {
-        setCurrentStep(prev => prev < steps.length - 1 ? prev + 1 : prev);
+        setCurrentStep(prev => {
+          const next = prev < steps.length ? prev + 1 : prev;
+          if (next >= steps.length) {
+            loadingSequenceDone = true;
+            maybeShowResults();
+          }
+          return next;
+        });
       }, 1500);
       const tipInterval = setInterval(() => {
         setCurrentTip(prev => (prev + 1) % tips.length);
@@ -101,16 +127,13 @@ const App = () => {
           const data = await analyzeRepo(repoUrl);
           if (startTimeRef.current) {
             const elapsed = Math.round((Date.now() - startTimeRef.current) / 1000);
-            setElapsedTime(`${elapsed}s`);
+            analysisElapsed = `${elapsed}s`;
           }
-          setAnalysis(data);
+          analysisData = data;
           analyzingRef.current = false;
-          setAppState('results');
-          setChatMessages([{
-            role: 'bob',
-            content: `I've analyzed ${data.repo_name || 'the repository'}. Ask me anything about the codebase — architecture, specific files, or how to implement new features.`
-          }]);
+          maybeShowResults();
         } catch (err) {
+          if (!isActive) return;
           const errMsg = err.message || 'Analysis failed';
           analyzingRef.current = false;
           setApiError(errMsg);
@@ -127,6 +150,7 @@ const App = () => {
       performAnalysis();
 
       return () => {
+        isActive = false;
         clearInterval(stepInterval);
         clearInterval(tipInterval);
       };
@@ -283,16 +307,6 @@ const App = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!shellStarted || !shellDone || shellHidden || shellExiting) return;
-    setShellExiting(true);
-    const timeout = setTimeout(() => {
-      setShellHidden(true);
-      setShellExiting(false);
-    }, 460);
-    return () => clearTimeout(timeout);
-  }, [shellStarted, shellDone, shellHidden, shellExiting]);
-
   const handleAnalyze = () => {
     if (analyzingRef.current) return;
 
@@ -320,8 +334,6 @@ const App = () => {
     setTypingText('');
     setShellDone(false);
     setShellStarted(false);
-    setShellExiting(false);
-    setShellHidden(false);
     startTimeRef.current = Date.now();
     setElapsedTime(null);
     setAppState('loading');
@@ -340,8 +352,6 @@ const App = () => {
     setTypingText('');
     setShellDone(false);
     setShellStarted(false);
-    setShellExiting(false);
-    setShellHidden(false);
     setChatMessages([]);
     setActiveTab('overview');
     setInputValue('');
@@ -356,8 +366,6 @@ const App = () => {
     setTypingText('');
     setShellDone(false);
     setShellStarted(false);
-    setShellExiting(false);
-    setShellHidden(false);
     setCodingLoading(true);
     setActiveTab('coding');
     setActiveMode(-1);
@@ -530,10 +538,6 @@ const App = () => {
       from { opacity: 0; transform: translateY(2px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    @keyframes shellFadeUpOut {
-      from { opacity: 1; transform: translateY(0); }
-      to { opacity: 0; transform: translateY(-28px); }
-    }
     @keyframes progressLoop {
       0% { width: 0%; }
       50% { width: 85%; }
@@ -636,10 +640,6 @@ const App = () => {
     .bob-shell-command { color: #555; }
     .bob-shell-output { color: #22c98a; }
     .bob-shell-highlight { color: #c9a84c; }
-    .shell-exit-up {
-      animation: shellFadeUpOut 460ms ease forwards;
-      pointer-events: none;
-    }
     .bob-stats-card {
       width: 100%;
       background: var(--paper2);
@@ -1425,8 +1425,8 @@ const App = () => {
                   </div>
                 ) : (
                   <div className="space-y-8">
-                    {shellStarted && !shellHidden && (
-                      <div className={`animate-fade-up ${shellExiting ? 'shell-exit-up' : ''}`} style={{
+                    {shellStarted && (
+                      <div className="animate-fade-up" style={{
                         background: '#0a0a0a',
                         border: '1px solid #1a1a1a',
                         padding: '0',
@@ -1562,7 +1562,7 @@ const App = () => {
                       </div>
                     )}
 
-                    {shellDone && !coding && (
+                    {false && (
                       <div className="card animate-fade-up">
                         <label className="label">Bob · Orchestrator</label>
                         <h3 className="font-serif text-[22px] mt-4 mb-2">Finalizing pull request output...</h3>
