@@ -239,7 +239,8 @@ def get_configured_client(config: dict):
         groq_key=config["groq_key"],
         provider=config["provider"],
         mock_mode=config["mock"],
-        bob_base_url=config["bob_base_url"]
+        bob_base_url=config["bob_base_url"],
+        watsonx_project_id=config.get("watsonx_project_id")
     )
 
 
