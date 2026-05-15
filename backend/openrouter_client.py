@@ -10,15 +10,15 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-GEMINI_MODEL = "gemini-2.0-flash"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_MODEL = "ibm/granite-4.1-8b-instruct"
 logger = logging.getLogger(__name__)
 
 
-class GeminiClient:
+class OpenRouterClient:
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or GEMINI_API_KEY
+        self.api_key = api_key or OPENROUTER_API_KEY
         self.available = bool(self.api_key)
 
     def _slim_context(self, repo_context: dict) -> dict:
@@ -46,13 +46,14 @@ class GeminiClient:
     async def _call(self, prompt: str, system: str = None,
                     max_retries: int = 3) -> str:
         if not self.api_key:
-            raise Exception("GEMINI_API_KEY not set")
+            raise Exception("OPENROUTER_API_KEY not set")
 
         full_prompt = prompt + "\n\nIMPORTANT: Respond with valid JSON only. No markdown. No explanation. Just the JSON object."
+        
+        messages = []
         if system:
-            content = f"System: {system}\n\n{full_prompt}"
-        else:
-            content = full_prompt
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": full_prompt})
 
         last_error = None
 
@@ -60,23 +61,23 @@ class GeminiClient:
             try:
                 async with httpx.AsyncClient(timeout=120.0) as client:
                     response = await client.post(
-                        f"{GEMINI_BASE_URL}/models/{GEMINI_MODEL}:generateContent",
-                        params={"key": self.api_key},
+                        f"{OPENROUTER_BASE_URL}/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.api_key}",
+                            "HTTP-Referer": "http://localhost:8080",
+                            "X-Title": "RepoSense"
+                        },
                         json={
-                            "contents": [
-                                {"parts": [{"text": content}]}
-                            ],
-                            "generationConfig": {
-                                "temperature": 0.1,
-                                "maxOutputTokens": 8192
-                            }
+                            "model": OPENROUTER_MODEL,
+                            "messages": messages,
+                            "temperature": 0.1
                         }
                     )
 
                     if response.status_code == 429:
                         wait = (attempt + 1) * 15
                         logger.warning(
-                            f"Gemini rate limit. Retry {attempt+1}/{max_retries} "
+                            f"OpenRouter rate limit. Retry {attempt+1}/{max_retries} "
                             f"after {wait}s"
                         )
                         await asyncio.sleep(wait)
@@ -85,20 +86,20 @@ class GeminiClient:
 
                     if response.status_code == 503:
                         wait = (attempt + 1) * 10
-                        logger.warning(f"Gemini unavailable. Retry after {wait}s")
+                        logger.warning(f"OpenRouter unavailable. Retry after {wait}s")
                         await asyncio.sleep(wait)
                         last_error = "Service unavailable"
                         continue
 
                     if response.status_code != 200:
                         raise Exception(
-                            f"Gemini error {response.status_code}: "
+                            f"OpenRouter error {response.status_code}: "
                             f"{response.text[:200]}"
                         )
 
                     data = response.json()
-                    text = data["candidates"][0]["content"]["parts"][0]["text"]
-                    logger.info(f"Gemini success (attempt {attempt+1}): "
+                    text = data["choices"][0]["message"]["content"]
+                    logger.info(f"OpenRouter success (attempt {attempt+1}): "
                                 f"{text[:100]}")
                     return text
 
@@ -110,14 +111,14 @@ class GeminiClient:
                     continue
                 raise
 
-        raise Exception(f"Gemini failed after {max_retries} attempts: {last_error}")
+        raise Exception(f"OpenRouter failed after {max_retries} attempts: {last_error}")
 
     def parse_json_response(self, raw: str) -> dict:
         import re
         import json
 
         if not raw:
-            raise Exception("Empty response from Gemini")
+            raise Exception("Empty response from OpenRouter")
 
         cleaned = raw.strip()
 
@@ -200,7 +201,7 @@ class GeminiClient:
             pass
 
         raise Exception(
-            f"Cannot parse JSON from Gemini response. "
+            f"Cannot parse JSON from OpenRouter response. "
             f"First 300 chars: {cleaned[:300]}"
         )
 

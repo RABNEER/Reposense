@@ -23,7 +23,7 @@ function getStoredValue(key, fallback = '') {
 }
 
 function getConfigHeaders() {
-  const provider = localStorage.getItem('ai_provider') || 'bob';
+  const provider = localStorage.getItem('ai_provider') || 'openrouter';
   const mockMode = localStorage.getItem('mock_mode');
   const envMockMode = import.meta.env.VITE_MOCK_MODE || 'false';
 
@@ -38,7 +38,7 @@ function getConfigHeaders() {
   const optionalHeaders = {
     'X-IBM-Bob-Key': localStorage.getItem('ibm_bob_key'),
     'X-IBM-Bob-Base-Url': localStorage.getItem('ibm_bob_base_url'),
-    'X-Gemini-Key': localStorage.getItem('gemini_key'),
+    'X-OpenRouter-Key': localStorage.getItem('openrouter_key'),
     'X-Groq-Key': localStorage.getItem('groq_key'),
     'X-GitHub-Token': localStorage.getItem('github_token'),
     'X-Watsonx-Key': localStorage.getItem('watsonx_key'),

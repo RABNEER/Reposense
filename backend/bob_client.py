@@ -35,7 +35,7 @@ BOB_API_KEY = os.getenv("IBM_BOB_API_KEY", os.getenv("WATSONX_API_KEY", ""))
 WATSONX_PROJECT_ID = os.getenv("WATSONX_PROJECT_ID", "")
 WATSONX_URL = os.getenv("WATSONX_URL", "https://us-south.ml.cloud.ibm.com")
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 # Enable mock mode if missing API key OR Watsonx Project ID
 MOCK_MODE = BOB_API_KEY == "mock" or BOB_API_KEY == "" or WATSONX_PROJECT_ID == ""
 
@@ -125,7 +125,7 @@ class BobClient:
 
 def get_ai_client(
     bob_key: str = None,
-    gemini_key: str = None,
+    openrouter_key: str = None,
     groq_key: str = None,
     provider: str = None,
     mock_mode: str = None,
@@ -134,20 +134,20 @@ def get_ai_client(
 ):
     from groq_client import GROQ_API_KEY
     selected_bob_key = (bob_key if bob_key is not None else BOB_API_KEY) or ""
-    selected_gemini_key = (gemini_key if gemini_key is not None else GEMINI_API_KEY) or ""
+    selected_openrouter_key = (openrouter_key if openrouter_key is not None else OPENROUTER_API_KEY) or ""
     selected_groq_key = (groq_key if groq_key is not None else GROQ_API_KEY) or ""
-    selected_provider = (provider or "bob").lower()
+    selected_provider = (provider or "openrouter").lower()
     selected_mock = str(mock_mode or "").lower() == "true"
 
     if selected_mock:
         return None
 
-    if selected_provider == "gemini" and selected_gemini_key:
+    if selected_provider == "openrouter" and selected_openrouter_key:
         try:
-            from backend.gemini_client import GeminiClient
+            from backend.openrouter_client import OpenRouterClient
         except ImportError:
-            from gemini_client import GeminiClient
-        return GeminiClient(api_key=selected_gemini_key)
+            from openrouter_client import OpenRouterClient
+        return OpenRouterClient(api_key=selected_openrouter_key)
 
     if selected_provider == "groq" and selected_groq_key:
         try:
@@ -159,12 +159,12 @@ def get_ai_client(
     if selected_bob_key and selected_bob_key != "mock":
         return BobClient(api_key=selected_bob_key, base_url=bob_base_url or WATSONX_URL, project_id=watsonx_project_id or WATSONX_PROJECT_ID)
 
-    if selected_gemini_key:
+    if selected_openrouter_key:
         try:
-            from backend.gemini_client import GeminiClient
+            from backend.openrouter_client import OpenRouterClient
         except ImportError:
-            from gemini_client import GeminiClient
-        return GeminiClient(api_key=selected_gemini_key)
+            from openrouter_client import OpenRouterClient
+        return OpenRouterClient(api_key=selected_openrouter_key)
 
     if selected_groq_key:
         try:

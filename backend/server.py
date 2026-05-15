@@ -33,9 +33,9 @@ except ImportError:
     )
 
 try:
-    from backend.gemini_client import GeminiClient
+    from backend.openrouter_client import OpenRouterClient
 except ImportError:
-    from gemini_client import GeminiClient
+    from openrouter_client import OpenRouterClient
 
 try:
     from backend.bob_client import BobClient
@@ -53,15 +53,16 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
 
     api_key = os.getenv("IBM_BOB_API_KEY", "")
-    gemini_key = os.getenv("GEMINI_API_KEY", "")
+    openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
     github_token = os.getenv("GITHUB_TOKEN")
     port = os.getenv("PORT", "8000")
 
     if api_key and api_key != "mock":
         logger.info("IBM Bob API key configured")
-    elif gemini_key:
-        logger.info("Gemini API key configured as fallback provider")
-    else:
+    if openrouter_key:
+        logger.info("OpenRouter API key configured (Primary Provider)")
+    
+    if not api_key and not openrouter_key:
         logger.warning("MOCK MODE ENABLED - Using simulated AI responses")
 
     if github_token:
@@ -95,7 +96,7 @@ app.add_middleware(
         "*",
         "Content-Type",
         "Authorization",
-        "X-Gemini-Key",
+        "X-OpenRouter-Key",
         "X-IBM-Bob-Key",
         "X-IBM-Bob-Base-Url",
         "X-AI-Provider",
@@ -214,19 +215,19 @@ def get_request_config(http_request: Request) -> dict:
         "bob_key": watsonx_key,
         "bob_base_url": watsonx_url,
         "watsonx_project_id": watsonx_project_id,
-        "gemini_key": headers.get("X-Gemini-Key") or os.getenv("GEMINI_API_KEY", ""),
+        "openrouter_key": headers.get("X-OpenRouter-Key") or os.getenv("OPENROUTER_API_KEY", ""),
         "groq_key": headers.get("X-Groq-Key") or os.getenv("GROQ_API_KEY", ""),
         "github_token": headers.get("X-GitHub-Token") or os.getenv("GITHUB_TOKEN"),
-        "provider": headers.get("X-AI-Provider", "bob"),
+        "provider": headers.get("X-AI-Provider", "openrouter"),
         "mock": headers.get("X-Mock-Mode", "false")
     }
 
 
 def get_configured_client(config: dict):
     try:
-        from backend.gemini_client import GeminiClient
+        from backend.openrouter_client import OpenRouterClient
     except ImportError:
-        from gemini_client import GeminiClient
+        from openrouter_client import OpenRouterClient
 
     try:
         from backend.bob_client import BobClient
@@ -235,7 +236,7 @@ def get_configured_client(config: dict):
 
     return get_ai_client(
         bob_key=config["bob_key"],
-        gemini_key=config["gemini_key"],
+        openrouter_key=config["openrouter_key"],
         groq_key=config["groq_key"],
         provider=config["provider"],
         mock_mode=config["mock"],
@@ -271,9 +272,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/api/health")
 async def health_check():
     try:
-        from backend.gemini_client import GeminiClient
+        from backend.openrouter_client import OpenRouterClient
     except ImportError:
-        from gemini_client import GeminiClient
+        from openrouter_client import OpenRouterClient
 
     try:
         from backend.bob_client import BobClient
@@ -281,13 +282,13 @@ async def health_check():
         from bob_client import BobClient
 
     api_key = os.getenv("IBM_BOB_API_KEY", "")
-    gemini_key = os.getenv("GEMINI_API_KEY", "")
+    openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
     groq_key = os.getenv("GROQ_API_KEY", "")
     return {
         "status": "ok",
         "version": "1.0.0",
         "bob_connected": bool(api_key and api_key != ""),
-        "gemini_connected": bool(gemini_key),
+        "openrouter_connected": bool(openrouter_key),
         "groq_connected": bool(groq_key),
         "mock_mode": MOCK_MODE,
         "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -297,9 +298,9 @@ async def health_check():
 @app.post("/api/analyze")
 async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
     try:
-        from backend.gemini_client import GeminiClient
+        from backend.openrouter_client import OpenRouterClient
     except ImportError:
-        from gemini_client import GeminiClient
+        from openrouter_client import OpenRouterClient
 
     try:
         from backend.bob_client import BobClient
@@ -346,9 +347,9 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
 @app.post("/api/ask")
 async def ask_question(payload: AskRequest, http_request: Request):
     try:
-        from backend.gemini_client import GeminiClient
+        from backend.openrouter_client import OpenRouterClient
     except ImportError:
-        from gemini_client import GeminiClient
+        from openrouter_client import OpenRouterClient
 
     try:
         from backend.bob_client import BobClient
@@ -393,9 +394,9 @@ async def ask_question(payload: AskRequest, http_request: Request):
 @app.post("/api/task")
 async def kickstart_task(payload: TaskRequest, http_request: Request):
     try:
-        from backend.gemini_client import GeminiClient
+        from backend.openrouter_client import OpenRouterClient
     except ImportError:
-        from gemini_client import GeminiClient
+        from openrouter_client import OpenRouterClient
 
     try:
         from backend.bob_client import BobClient
@@ -442,9 +443,9 @@ async def kickstart_task(payload: TaskRequest, http_request: Request):
 @app.post("/api/export/markdown")
 async def export_markdown(payload: ExportRequest, http_request: Request):
     try:
-        from backend.gemini_client import GeminiClient
+        from backend.openrouter_client import OpenRouterClient
     except ImportError:
-        from gemini_client import GeminiClient
+        from openrouter_client import OpenRouterClient
 
     try:
         from backend.bob_client import BobClient

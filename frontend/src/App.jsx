@@ -35,13 +35,13 @@ const App = () => {
   const [checkedSteps, setCheckedSteps] = useState(new Set());
   const [activeMode, setActiveMode] = useState(-1);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [aiProvider, setAiProvider] = useState(() => readStoredConfig('ai_provider', 'bob'));
+  const [aiProvider, setAiProvider] = useState(() => readStoredConfig('ai_provider', 'openrouter'));
   const [ibmBobKey, setIbmBobKey] = useState(() => readStoredConfig('ibm_bob_key'));
   const [ibmBobBaseUrl, setIbmBobBaseUrl] = useState(() => readStoredConfig('ibm_bob_base_url', 'https://bob.ibm.com'));
   const [watsonxKey, setWatsonxKey] = useState(() => readStoredConfig('watsonx_key'));
   const [watsonxProjectId, setWatsonxProjectId] = useState(() => readStoredConfig('watsonx_project_id'));
   const [watsonxUrl, setWatsonxUrl] = useState(() => readStoredConfig('watsonx_url', 'https://us-south.ml.cloud.ibm.com'));
-  const [geminiKey, setGeminiKey] = useState(() => readStoredConfig('gemini_key'));
+  const [openrouterKey, setOpenRouterKey] = useState(() => readStoredConfig('openrouter_key'));
   const [groqKey, setGroqKey] = useState(() => readStoredConfig('groq_key'));
   const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
   const [mockModeToggle, setMockModeToggle] = useState(() => readStoredConfig('mock_mode', 'true') === 'true');
@@ -162,13 +162,13 @@ const App = () => {
 
   useEffect(() => {
     if (settingsOpen) {
-      setAiProvider(localStorage.getItem('ai_provider') || 'bob');
+      setAiProvider(localStorage.getItem('ai_provider') || 'openrouter');
       setIbmBobKey(localStorage.getItem('ibm_bob_key') || '');
       setIbmBobBaseUrl(localStorage.getItem('ibm_bob_base_url') || 'https://bob.ibm.com');
       setWatsonxKey(localStorage.getItem('watsonx_key') || '');
       setWatsonxProjectId(localStorage.getItem('watsonx_project_id') || '');
       setWatsonxUrl(localStorage.getItem('watsonx_url') || 'https://us-south.ml.cloud.ibm.com');
-      setGeminiKey(localStorage.getItem('gemini_key') || '');
+      setOpenRouterKey(localStorage.getItem('openrouter_key') || '');
       setGroqKey(localStorage.getItem('groq_key') || '');
       setGithubToken(localStorage.getItem('github_token') || '');
       const stored = localStorage.getItem('mock_mode');
@@ -179,13 +179,13 @@ const App = () => {
 
   useEffect(() => {
     if (!settingsOpen || mockModeManualOverride) return;
-    const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
+    const hasOpenRouterKey = openrouterKey && openrouterKey.trim().length > 0;
     const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
     const hasWatsonxKey = watsonxKey && watsonxKey.trim().length > 0;
     const hasGroqKey = groqKey && groqKey.trim().length > 0;
-    const hasAnyKey = hasGeminiKey || hasBobKey || hasWatsonxKey || hasGroqKey;
+    const hasAnyKey = hasOpenRouterKey || hasBobKey || hasWatsonxKey || hasGroqKey;
     setMockModeToggle(!hasAnyKey);
-  }, [settingsOpen, geminiKey, ibmBobKey, watsonxKey, groqKey, mockModeManualOverride]);
+  }, [settingsOpen, openrouterKey, ibmBobKey, watsonxKey, groqKey, mockModeManualOverride]);
 
   // ─── HANDLERS ───
   const normalizeGithubUrl = (value) => {
@@ -370,16 +370,16 @@ const App = () => {
     localStorage.setItem('watsonx_key', watsonxKey.trim());
     localStorage.setItem('watsonx_project_id', watsonxProjectId.trim());
     localStorage.setItem('watsonx_url', watsonxUrl.trim());
-    localStorage.setItem('gemini_key', geminiKey.trim());
+    localStorage.setItem('openrouter_key', openrouterKey.trim());
     localStorage.setItem('groq_key', groqKey.trim());
     localStorage.setItem('github_token', githubToken.trim());
 
     // Auto-set mock mode based on keys
     const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
     const hasWatsonxKey = watsonxKey && watsonxKey.trim().length > 0;
-    const hasGeminiKey = geminiKey && geminiKey.trim().length > 0;
+    const hasOpenRouterKey = openrouterKey && openrouterKey.trim().length > 0;
     const hasGroqKey = groqKey && groqKey.trim().length > 0;
-    const hasAnyKey = hasBobKey || hasWatsonxKey || hasGeminiKey || hasGroqKey;
+    const hasAnyKey = hasBobKey || hasWatsonxKey || hasOpenRouterKey || hasGroqKey;
 
     if (hasAnyKey) {
       localStorage.setItem('mock_mode', 'false');
@@ -433,11 +433,11 @@ const App = () => {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-');
-  const hasCustomApi = Boolean(ibmBobKey.trim() || watsonxKey.trim() || geminiKey.trim() || githubToken.trim());
+  const hasCustomApi = Boolean(ibmBobKey.trim() || watsonxKey.trim() || openrouterKey.trim() || githubToken.trim());
   const apiStatus = mockModeToggle
     ? { label: '○ DEMO — Mock', color: 'var(--gold)' }
-    : aiProvider === 'gemini'
-      ? { label: '● LIVE — Gemini', color: '#2563eb' }
+    : aiProvider === 'openrouter'
+      ? { label: '● LIVE — OpenRouter', color: '#2563eb' }
       : aiProvider === 'groq'
         ? { label: '● LIVE — Groq', color: '#f59e0b' }
         : { label: '● LIVE — IBM Bob', color: 'var(--sage)' };
@@ -736,7 +736,7 @@ const App = () => {
           <div className="flex gap-2 mb-5">
             {[
               { id: 'bob', label: 'IBM Bob' },
-              { id: 'gemini', label: 'Gemini' },
+              { id: 'openrouter', label: 'OpenRouter' },
               { id: 'groq', label: 'Groq' }
             ].map(option => (
               <button
@@ -788,16 +788,16 @@ const App = () => {
                 <p className="settings-helper mt-1">Example: https://us-south.ml.cloud.ibm.com or https://eu-de.ml.cloud.ibm.com</p>
               </div>
             </div>
-          ) : aiProvider === 'gemini' ? (
+          ) : aiProvider === 'openrouter' ? (
             <div className="space-y-3">
               <div>
-                <label className="label block mb-2">Gemini API Key</label>
+                <label className="label block mb-2">OpenRouter API Key</label>
                 <input
                   type="password"
                   className="settings-input"
                   placeholder="AIzaSy..."
-                  value={geminiKey}
-                  onChange={(e) => setGeminiKey(e.target.value)}
+                  value={openrouterKey}
+                  onChange={(e) => setOpenRouterKey(e.target.value)}
                 />
               </div>
               <a
@@ -1745,7 +1745,7 @@ const App = () => {
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          animation: 'fade-up 0.3s ease-out'
+          animation: 'fadeUp 0.3s ease-out'
         }}>
           <span>{toast.type === 'error' ? '✕' : '✓'}</span>
           <span>{toast.message}</span>
