@@ -22,6 +22,8 @@ const App = () => {
   const [typingText, setTypingText] = useState('');
   const [shellDone, setShellDone] = useState(false);
   const [shellStarted, setShellStarted] = useState(false);
+  const [shellExiting, setShellExiting] = useState(false);
+  const [shellHidden, setShellHidden] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
@@ -281,6 +283,16 @@ const App = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!shellStarted || !shellDone || !coding || shellHidden || shellExiting) return;
+    setShellExiting(true);
+    const timeout = setTimeout(() => {
+      setShellHidden(true);
+      setShellExiting(false);
+    }, 460);
+    return () => clearTimeout(timeout);
+  }, [shellStarted, shellDone, coding, shellHidden, shellExiting]);
+
   const handleAnalyze = () => {
     if (analyzingRef.current) return;
 
@@ -308,6 +320,8 @@ const App = () => {
     setTypingText('');
     setShellDone(false);
     setShellStarted(false);
+    setShellExiting(false);
+    setShellHidden(false);
     startTimeRef.current = Date.now();
     setElapsedTime(null);
     setAppState('loading');
@@ -326,6 +340,8 @@ const App = () => {
     setTypingText('');
     setShellDone(false);
     setShellStarted(false);
+    setShellExiting(false);
+    setShellHidden(false);
     setChatMessages([]);
     setActiveTab('overview');
     setInputValue('');
@@ -334,6 +350,14 @@ const App = () => {
   };
 
   const handleKickstart = async () => {
+    shellRunRef.current += 1;
+    setCoding(null);
+    setShellLines([]);
+    setTypingText('');
+    setShellDone(false);
+    setShellStarted(false);
+    setShellExiting(false);
+    setShellHidden(false);
     setCodingLoading(true);
     setActiveTab('coding');
     setActiveMode(-1);
@@ -498,6 +522,10 @@ const App = () => {
       from { opacity: 0; transform: translateY(2px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes shellFadeUpOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-28px); }
+    }
     @keyframes progressLoop {
       0% { width: 0%; }
       50% { width: 85%; }
@@ -600,6 +628,10 @@ const App = () => {
     .bob-shell-command { color: #555; }
     .bob-shell-output { color: #22c98a; }
     .bob-shell-highlight { color: #c9a84c; }
+    .shell-exit-up {
+      animation: shellFadeUpOut 460ms ease forwards;
+      pointer-events: none;
+    }
     .bob-stats-card {
       width: 100%;
       background: var(--paper2);
@@ -1385,8 +1417,8 @@ const App = () => {
                   </div>
                 ) : (
                   <div className="space-y-8">
-                    {shellStarted && (
-                      <div className="animate-fade-up" style={{
+                    {shellStarted && !shellHidden && (
+                      <div className={`animate-fade-up ${shellExiting ? 'shell-exit-up' : ''}`} style={{
                         background: '#0a0a0a',
                         border: '1px solid #1a1a1a',
                         padding: '0',
@@ -1522,7 +1554,7 @@ const App = () => {
                       </div>
                     )}
 
-                    {coding && shellDone && (
+                    {coding && shellDone && shellHidden && (
                       <div className="card-grid animate-fade-up">
                         <div className="card col-span-full">
                           <label className="label">Bob · Orchestrator Mode · Issue Found</label>
