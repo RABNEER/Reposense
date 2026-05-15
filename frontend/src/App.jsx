@@ -1386,7 +1386,7 @@ const App = () => {
                 ) : (
                   <div className="space-y-8">
                     {shellStarted && (
-                      <div style={{
+                      <div className="animate-fade-up" style={{
                         background: '#0a0a0a',
                         border: '1px solid #1a1a1a',
                         padding: '0',
