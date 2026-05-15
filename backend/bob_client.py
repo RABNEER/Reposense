@@ -254,6 +254,9 @@ def _call(prompt: str, mode: str = "ask", system: str = None, api_key: str = Non
         "apikey": selected_api_key
     }
     
+    if "ibm.com" not in selected_base_url.lower():
+        credentials["instance_id"] = "openshift"
+    
     # We use meta-llama/llama-3-3-70b-instruct as the underlying IBM Bob reasoning engine 
     # executed genuinely on IBM Watsonx infrastructure.
     model_id = "meta-llama/llama-3-3-70b-instruct" 
