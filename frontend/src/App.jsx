@@ -1562,7 +1562,7 @@ const App = () => {
                       </div>
                     )}
 
-                    {shellDone && shellHidden && !coding && (
+                    {shellDone && !coding && (
                       <div className="card animate-fade-up">
                         <label className="label">Bob · Orchestrator</label>
                         <h3 className="font-serif text-[22px] mt-4 mb-2">Finalizing pull request output...</h3>
@@ -1572,7 +1572,7 @@ const App = () => {
                       </div>
                     )}
 
-                    {shellDone && shellHidden && coding && (
+                    {shellDone && coding && (
                       <div className="card-grid animate-fade-up">
                         {false && (
                           <div className="card col-span-full">
