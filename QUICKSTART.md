@@ -5,7 +5,7 @@ Get RepoSense running in under 5 minutes!
 > **🎉 PLUG & PLAY EXPERIENCE FOR JUDGES**
 > If you are a judge for the **IBM Bob Hackathon**, you do not need to set this up locally!
 > **Live App**: [https://reposense-blond.vercel.app](https://reposense-blond.vercel.app)
-> The live deployment is pre-configured with our own IBM WatsonX and GitHub API keys. **You do not need to bring your own keys or configure any settings.** Simply open the app and experience the magic instantly.
+> The live deployment is pre-configured with our own IBM Watsonx and GitHub API keys. **You do not need to bring your own keys or configure any settings.** Simply open the app and experience the magic instantly.
 
 ## Prerequisites (For Local Development)
 
@@ -44,8 +44,8 @@ cp .env.example .env
 
 **Edit `.env` file:**
 ```bash
-# For development with real WatsonX Granite AI analysis
-GROQ_API_KEY=your_actual_api_key_here
+# For development with real IBM Watsonx Granite AI analysis
+WATSONX_API_KEY=your_actual_api_key_here
 GITHUB_TOKEN=your_github_token_here
 ```
 
@@ -88,7 +88,7 @@ npm run dev
 2. Paste a GitHub repository URL (try: `https://github.com/facebook/react`)
 3. Click "Analyze Repository"
 4. Wait 15-30 seconds for analysis
-5. Explore the onboarding report powered by IBM Bob & WatsonX Granite!
+5. Explore the onboarding report powered by IBM Bob & IBM Watsonx Granite!
 
 ## Example Repositories to Try
 

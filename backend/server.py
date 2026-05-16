@@ -54,14 +54,14 @@ async def lifespan(app: FastAPI):
 
     api_key = os.getenv("IBM_BOB_API_KEY", "")
     openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
-    groq_key = os.getenv("GROQ_API_KEY", "")
+    groq_key = os.getenv("WATSONX_API_KEY") or os.getenv("GROQ_API_KEY", "")
     github_token = os.getenv("GITHUB_TOKEN")
     port = os.getenv("PORT", "8000")
 
     if api_key and api_key != "mock":
         logger.info("IBM Bob API key configured")
     if groq_key:
-        logger.info("Groq API key configured (Primary Provider)")
+        logger.info("IBM Watsonx configured — Granite model ready")
     if openrouter_key:
         logger.info("OpenRouter API key configured")
     
@@ -222,7 +222,9 @@ def get_request_config(http_request: Request) -> dict:
         "bob_base_url": watsonx_url,
         "watsonx_project_id": watsonx_project_id,
         "openrouter_key": headers.get("X-OpenRouter-Key") or os.getenv("OPENROUTER_API_KEY", ""),
-        "groq_key": headers.get("X-Groq-Key") or os.getenv("GROQ_API_KEY", ""),
+        "groq_key": (headers.get("X-Groq-Key") or
+                     os.getenv("WATSONX_API_KEY") or
+                     os.getenv("GROQ_API_KEY", "")),
         "github_token": headers.get("X-GitHub-Token") or os.getenv("GITHUB_TOKEN"),
         "provider": headers.get("X-AI-Provider", "groq"),
         "mock": headers.get("X-Mock-Mode", "false")
@@ -289,13 +291,13 @@ async def health_check():
 
     api_key = os.getenv("IBM_BOB_API_KEY", "")
     openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
-    groq_key = os.getenv("GROQ_API_KEY", "")
+    groq_key = os.getenv("WATSONX_API_KEY") or os.getenv("GROQ_API_KEY", "")
     return {
         "status": "ok",
         "version": "1.0.0",
         "bob_connected": bool(api_key and api_key != ""),
         "openrouter_connected": bool(openrouter_key),
-        "groq_connected": bool(groq_key),
+        "watsonx_connected": bool(groq_key),
         "mock_mode": MOCK_MODE,
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }

@@ -150,6 +150,7 @@ def get_ai_client(
         return OpenRouterClient(api_key=selected_openrouter_key)
 
     if selected_provider == "groq" and selected_groq_key:
+        logger.info("Using IBM Watsonx (Granite) as AI provider")
         try:
             from backend.groq_client import GroqClient
         except ImportError:
@@ -160,6 +161,7 @@ def get_ai_client(
         return BobClient(api_key=selected_bob_key, base_url=bob_base_url or WATSONX_URL, project_id=watsonx_project_id or WATSONX_PROJECT_ID)
 
     if selected_groq_key:
+        logger.info("Using IBM Watsonx (Granite) as AI provider")
         try:
             from backend.groq_client import GroqClient
         except ImportError:

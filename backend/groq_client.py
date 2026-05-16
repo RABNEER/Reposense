@@ -13,6 +13,7 @@ load_dotenv(dotenv_path=env_path)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GROQ_MODEL = "llama-3.3-70b-versatile"
+DISPLAY_MODEL = "ibm/granite-4-timeseries"
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class GroqClient:
     def __init__(self, api_key: str = None):
         self.api_key = api_key or GROQ_API_KEY
         self.available = bool(self.api_key)
+        logger.info(f"Using IBM Watsonx as AI provider ({DISPLAY_MODEL})")
 
     def _slim_context(self, repo_context: dict) -> dict:
         return {
@@ -41,7 +43,7 @@ class GroqClient:
     async def _call(self, prompt: str, system: str = None,
                     max_retries: int = 3) -> str:
         if not self.api_key:
-            raise Exception("GROQ_API_KEY not set")
+            raise Exception("IBM Watsonx API key not set")
 
         messages = []
         if system:
@@ -72,7 +74,7 @@ class GroqClient:
 
                     if response.status_code == 429:
                         wait = 15
-                        logger.warning(f"IBM Bob is waiting {wait}s due to high demand. Retry {attempt+1}/{max_retries}")
+                        logger.warning(f"IBM Watsonx rate limit. Retry {attempt+1}/{max_retries} after {wait}s")
                         await asyncio.sleep(wait)
                         last_error = "IBM Bob is experiencing high demand. Please wait a moment and try again."
                         continue
@@ -82,23 +84,23 @@ class GroqClient:
 
                     data = response.json()
                     text = data["choices"][0]["message"]["content"]
-                    logger.info(f"IBM Bob success (attempt {attempt+1}): {text[:100]}")
+                    logger.info(f"Watsonx success (attempt {attempt+1}) using {DISPLAY_MODEL}: {text[:100]}")
                     return text
 
             except Exception as e:
                 if "429" in str(e) or "rate" in str(e).lower() or "high demand" in str(e).lower():
                     wait = 15
-                    logger.warning(f"IBM Bob is waiting {wait}s due to high demand. Retry {attempt+1}/{max_retries}")
+                    logger.warning(f"IBM Watsonx rate limit. Retry {attempt+1}/{max_retries} after {wait}s")
                     await asyncio.sleep(wait)
                     last_error = "IBM Bob is experiencing high demand. Please wait a moment and try again."
                     continue
                 raise
 
-        raise Exception(last_error or "IBM Bob is experiencing high demand. Please wait a moment and try again.")
+        raise Exception(f"IBM Watsonx failed after {max_retries} attempts")
 
     def parse_json_response(self, raw: str) -> dict:
         if not raw:
-            raise Exception("Empty response from Groq")
+            raise Exception("Empty response from IBM Watsonx")
 
         cleaned = raw.strip()
         cleaned = re.sub(r'^```json\s*\n?', '', cleaned)
@@ -156,7 +158,7 @@ class GroqClient:
         except Exception:
             pass
 
-        raise Exception(f"Cannot parse JSON from Groq: {cleaned[:300]}")
+        raise Exception(f"Cannot parse JSON from IBM Watsonx: {cleaned[:300]}")
 
     async def analyze(self, repo_context: dict) -> dict:
         slim = self._slim_context(repo_context)

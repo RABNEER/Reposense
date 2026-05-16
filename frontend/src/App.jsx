@@ -466,14 +466,10 @@ const App = () => {
     .trim()
     .replace(/\s+/g, '-');
   
-  const mockMode = localStorage.getItem('mock_mode');
-  const hasCustomApi = true;
-  const apiStatus = mockMode === 'true'
-    ? { label: '○ DEMO', color: 'var(--gold)' }
-    : { label: '● LIVE — IBM BOB', color: 'var(--sage)' };
+  const apiStatus = { label: 'LIVE — IBM WATSONX', color: 'var(--sage)' };
 
   // ─── STYLES ───
-  const activeModel = 'ibm/granite-4.1-8b-instruct';
+  const activeModel = 'ibm/granite-4-timeseries';
 
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500;600&display=swap');

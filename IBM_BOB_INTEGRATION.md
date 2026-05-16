@@ -1,10 +1,10 @@
-# IBM Bob & WatsonX Integration Guide 🤖
+# IBM Bob & Watsonx Integration Guide 🤖
 
-This document explains how RepoSense deeply integrates with **IBM Bob** and the underlying **IBM WatsonX Granite models**, showcasing its advanced multi-mode capabilities.
+This document explains how RepoSense deeply integrates with **IBM Bob** and the underlying **IBM Watsonx Granite models**, showcasing its advanced multi-mode capabilities.
 
 ## Overview
 
-RepoSense goes beyond simple API calls by orchestrating **IBM Bob's four operational modes** to provide comprehensive, end-to-end repository analysis. We utilize IBM WatsonX Granite models for their exceptional speed and code-reasoning capabilities.
+RepoSense goes beyond simple API calls by orchestrating **IBM Bob's four operational modes** to provide comprehensive, end-to-end repository analysis. We utilize IBM Watsonx Granite models for their exceptional speed and code-reasoning capabilities.
 
 1. **📝 Plan Mode** - Strategic analysis and onboarding planning
 2. **❓ Ask Mode** - Question answering and deep codebase explanations
@@ -34,7 +34,7 @@ RepoSense goes beyond simple API calls by orchestrating **IBM Bob's four operati
          ▼
 ┌─────────────────┐
 │   IBM Bob API   │
-│ (WatsonX Granite)│
+│ (Watsonx Granite)│
 └────────┬────────┘
          │
          ▼
@@ -59,7 +59,7 @@ RepoSense goes beyond simple API calls by orchestrating **IBM Bob's four operati
 # backend/services/bob_client.py
 async def analyze_repository(self, prompt: str) -> dict:
     """
-    Analyze repository using Plan mode via WatsonX
+    Analyze repository using Plan mode via Watsonx
     """
     response = await self._make_request(
         prompt, 
@@ -180,7 +180,7 @@ def safe_error(e: Exception, context: str = "") -> str:
 
 ### Zero-Friction Setup for Judges
 For the Hackathon, we've bypassed the need for users to bring their own API keys. 
-The backend automatically falls back to our server-side environment variables (`GROQ_API_KEY` for WatsonX Granite simulation and `GITHUB_TOKEN`). 
+The backend automatically falls back to our server-side environment variables (`WATSONX_API_KEY` for IBM Watsonx Granite and `GITHUB_TOKEN`). 
 
 **Judges can evaluate the live URL instantly without any configuration.**
 

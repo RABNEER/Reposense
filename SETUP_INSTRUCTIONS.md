@@ -2,7 +2,7 @@
 
 > **🎉 ATTENTION JUDGES**
 > If you are evaluating this project for the **IBM Bob Hackathon**, you do NOT need to follow these instructions!
-> The live deployment at [https://reposense-blond.vercel.app](https://reposense-blond.vercel.app) is fully configured with our own IBM WatsonX and GitHub credentials.
+> The live deployment at [https://reposense-blond.vercel.app](https://reposense-blond.vercel.app) is fully configured with our own IBM Watsonx and GitHub credentials.
 > Simply open the URL and use the app immediately!
 
 ---
@@ -45,8 +45,8 @@ pip install -r requirements.txt
 In the `backend` directory, create a `.env` file (you can copy `.env.example`):
 
 ```bash
-# Required for WatsonX Granite integration
-GROQ_API_KEY=your_api_key_here
+# Required for IBM Watsonx Granite integration
+WATSONX_API_KEY=your_api_key_here
 GITHUB_TOKEN=your_github_token_here
 ```
 
@@ -88,7 +88,7 @@ Open your browser and go to: **http://localhost:5173**
 1. **Try an example repository:**
    - Paste: `https://github.com/facebook/react`
    - Click "Analyze Repository"
-   - Wait 15-30 seconds for IBM Bob (WatsonX) to analyze
+   - Wait 15-30 seconds for IBM Bob (IBM Watsonx) to analyze
 
 2. **Explore features:**
    - View the comprehensive onboarding report

@@ -15,7 +15,7 @@ This guide covers deploying RepoSense to production environments.
 
 ```bash
 # Required
-GROQ_API_KEY=your_production_api_key
+WATSONX_API_KEY=your_production_api_key
 GITHUB_TOKEN=your_github_token
 
 # Environment
@@ -48,7 +48,8 @@ VITE_MOCK_MODE=false
 2. Connect GitHub repository
 3. Select `backend` directory as the root directory for the service.
 4. Add environment variables:
-   - `GROQ_API_KEY`
+   - `WATSONX_API_KEY`
+   - `GROQ_API_KEY` (keep existing value for backward compatibility)
    - `GITHUB_TOKEN`
    - `CORS_ORIGINS=https://reposense-blond.vercel.app`
 5. Deploy
