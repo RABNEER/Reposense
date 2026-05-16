@@ -1,20 +1,29 @@
 <div align="center">
 
-# RepoSense 🚀
-### **Turn idea into impact faster** — Understand any codebase in 2 minutes, not 2 weeks.
+# 🚀 RepoSense
+### **Accelerate Codebase Mastery**
+*Understand any repository in 2 minutes, not 2 weeks.*
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-0062ff?style=for-the-badge&logo=vercel)](https://reposense-blond.vercel.app)
 [![IBM Bob](https://img.shields.io/badge/Built%20With-IBM%20Bob-05a677?style=for-the-badge)](https://github.com/IBM/bob)
 [![Watsonx](https://img.shields.io/badge/Powered%20By-IBM%20Watsonx-be95ff?style=for-the-badge)](https://www.ibm.com/watsonx)
 [![Hackathon](https://img.shields.io/badge/Event-IBM%20Bob%20Hackathon-red?style=for-the-badge)](https://ibm-bob.devpost.com/)
 
-RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repositories and generates comprehensive onboarding reports using **IBM Bob** powered by **IBM Watsonx Granite models**.
+---
+
+**RepoSense** is an enterprise-grade repository onboarding tool. By leveraging the full power of **IBM Bob** orchestration and **IBM Watsonx Granite** models, it transforms complex codebases into actionable insights instantly.
+
+[**Explore Live**](https://reposense-blond.vercel.app) | [**Read Judges' Note**](#-judges-note-100-bob-built-mvp) | [**Watch Demo**](https://reposense-blond.vercel.app)
+
+<br/>
+
+![Hero Screenshot](./docs/Hero.png)
+
+<br/>
 
 </div>
 
 ---
-
-![Hero Page](docs/Hero.png)
 
 > [!IMPORTANT]
 > ### 🏆 **JUDGES' NOTE: 100% BOB-BUILT MVP**
@@ -27,22 +36,34 @@ RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repos
 
 ---
 
-## 🚀 Core Impact
+## 📸 Experience the Magic
 
-*   **⚡ 14 Days → 2 Minutes**: Drastically reduce developer ramp-up time and cognitive load.
-*   **🛠️ PR Ready Day 1**: Generates context-aware code fixes for actual repository issues.
-*   **🧠 Deep Context Mastery**: Analyzes full repository architecture using all 4 IBM Bob modes.
-*   **🔒 Enterprise Security**: Zero data persistence and request-scoped authentication protocols.
-
-## 📸 Interface Gallery
-
-| Deep Analysis | Interactive BobShell | Contextual Q&A |
-| :---: | :---: | :---: |
-| ![Results](docs/Results.png) | ![BobShell](docs/BobShell.png) | ![Ask Bob](docs/Ask.png) |
+<div align="center">
+  <table border="0">
+    <tr>
+      <td width="33%">
+        <h3 align="center">🔍 Deep Analysis</h3>
+        <img src="./docs/Results.png" width="100%" alt="Analysis Results" />
+        <p align="center"><i>Comprehensive architecture and tech-stack mapping.</i></p>
+      </td>
+      <td width="33%">
+        <h3 align="center">🐚 Interactive BobShell</h3>
+        <img src="./docs/BobShell.png" width="100%" alt="BobShell" />
+        <p align="center"><i>Real-time code fixes and task execution.</i></p>
+      </td>
+      <td width="33%">
+        <h3 align="center">💬 Contextual Q&A</h3>
+        <img src="./docs/Ask.png" width="100%" alt="Ask Bob" />
+        <p align="center"><i>Zero-hallucination codebase interrogation.</i></p>
+      </td>
+    </tr>
+  </table>
+</div>
 
 ---
 
-## 🌐 Live Infrastructure
+## ⚡ Core Impact
+
 
 | Service | Provider | Status | URL |
 | :--- | :--- | :--- | :--- |
