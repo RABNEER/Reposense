@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeRepo, askQuestion, kickstartTask, exportMarkdown } from './services/api';
 
-const readStoredConfig = (key, fallback = '') => {
-  if (typeof window === 'undefined') return fallback;
-  return localStorage.getItem(key) || fallback;
-};
-
 const App = () => {
   // ─── STATE ───
   const [appState, setAppState] = useState('hero'); // 'hero' | 'loading' | 'results'
@@ -34,18 +29,6 @@ const App = () => {
   const [currentTip, setCurrentTip] = useState(0);
   const [checkedSteps, setCheckedSteps] = useState(new Set());
   const [activeMode, setActiveMode] = useState(-1);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [aiProvider, setAiProvider] = useState(() => readStoredConfig('ai_provider', 'groq'));
-  const [ibmBobKey, setIbmBobKey] = useState(() => readStoredConfig('ibm_bob_key'));
-  const [ibmBobBaseUrl, setIbmBobBaseUrl] = useState(() => readStoredConfig('ibm_bob_base_url', 'https://bob.ibm.com'));
-  const [watsonxKey, setWatsonxKey] = useState(() => readStoredConfig('watsonx_key'));
-  const [watsonxProjectId, setWatsonxProjectId] = useState(() => readStoredConfig('watsonx_project_id'));
-  const [watsonxUrl, setWatsonxUrl] = useState(() => readStoredConfig('watsonx_url', 'https://us-south.ml.cloud.ibm.com'));
-  const [openrouterKey, setOpenRouterKey] = useState(() => readStoredConfig('openrouter_key'));
-  const [groqKey, setGroqKey] = useState(() => readStoredConfig('groq_key'));
-  const [githubToken, setGithubToken] = useState(() => readStoredConfig('github_token'));
-  const [mockModeToggle, setMockModeToggle] = useState(() => readStoredConfig('mock_mode', 'false') === 'true');
-  const [mockModeManualOverride, setMockModeManualOverride] = useState(false);
   const [toast, setToast] = useState(null); // { message, type }
 
   // Auto-dismiss toast
@@ -185,33 +168,6 @@ const App = () => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [appState]);
-
-  useEffect(() => {
-    if (settingsOpen) {
-      setAiProvider(localStorage.getItem('ai_provider') || 'groq');
-      setIbmBobKey(localStorage.getItem('ibm_bob_key') || '');
-      setIbmBobBaseUrl(localStorage.getItem('ibm_bob_base_url') || 'https://bob.ibm.com');
-      setWatsonxKey(localStorage.getItem('watsonx_key') || '');
-      setWatsonxProjectId(localStorage.getItem('watsonx_project_id') || '');
-      setWatsonxUrl(localStorage.getItem('watsonx_url') || 'https://us-south.ml.cloud.ibm.com');
-      setOpenRouterKey(localStorage.getItem('openrouter_key') || '');
-      setGroqKey(localStorage.getItem('groq_key') || '');
-      setGithubToken(localStorage.getItem('github_token') || '');
-      const stored = localStorage.getItem('mock_mode');
-      setMockModeToggle(stored !== null ? stored === 'true' : false);
-      setMockModeManualOverride(false);
-    }
-  }, [settingsOpen]);
-
-  useEffect(() => {
-    if (!settingsOpen || mockModeManualOverride) return;
-    const hasOpenRouterKey = openrouterKey && openrouterKey.trim().length > 0;
-    const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
-    const hasWatsonxKey = watsonxKey && watsonxKey.trim().length > 0;
-    const hasGroqKey = groqKey && groqKey.trim().length > 0;
-    const hasAnyKey = hasOpenRouterKey || hasBobKey || hasWatsonxKey || hasGroqKey;
-    setMockModeToggle(!hasAnyKey);
-  }, [settingsOpen, openrouterKey, ibmBobKey, watsonxKey, groqKey, mockModeManualOverride]);
 
   // ─── HANDLERS ───
   const normalizeGithubUrl = (value) => {
@@ -395,39 +351,6 @@ const App = () => {
     }
   };
 
-  const handleSaveSettings = () => {
-    localStorage.setItem('ai_provider', aiProvider);
-    localStorage.setItem('ibm_bob_key', ibmBobKey.trim());
-    localStorage.setItem('ibm_bob_base_url', ibmBobBaseUrl.trim());
-    localStorage.setItem('watsonx_key', watsonxKey.trim());
-    localStorage.setItem('watsonx_project_id', watsonxProjectId.trim());
-    localStorage.setItem('watsonx_url', watsonxUrl.trim());
-    localStorage.setItem('openrouter_key', openrouterKey.trim());
-    localStorage.setItem('groq_key', groqKey.trim());
-    localStorage.setItem('github_token', githubToken.trim());
-
-    // Auto-set mock mode based on keys
-    const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
-    const hasWatsonxKey = watsonxKey && watsonxKey.trim().length > 0;
-    const hasOpenRouterKey = openrouterKey && openrouterKey.trim().length > 0;
-    const hasGroqKey = groqKey && groqKey.trim().length > 0;
-    const hasAnyKey = hasBobKey || hasWatsonxKey || hasOpenRouterKey || hasGroqKey;
-
-    if (hasAnyKey) {
-      localStorage.setItem('mock_mode', 'false');
-    } else {
-      localStorage.setItem('mock_mode', 'true');
-    }
-
-    if (mockModeManualOverride) {
-      localStorage.setItem('mock_mode', mockModeToggle ? 'true' : 'false');
-    }
-
-    const stored = localStorage.getItem('mock_mode');
-    setMockModeToggle(stored === 'true');
-    setSettingsOpen(false);
-  };
-
   const handleSend = async (q = chatInput) => {
     const question = q.trim();
     if (!question) return;
@@ -545,62 +468,6 @@ const App = () => {
     input, textarea { cursor: text; }
     button:hover { background-color: var(--rust) !important; color: var(--paper) !important; }
     button.export-button:hover { background-color: var(--paper2) !important; color: var(--ink) !important; }
-    button.settings-button:hover,
-    button.settings-close:hover,
-    button.settings-option:hover,
-    button.settings-save:hover {
-      background-color: var(--paper2) !important;
-      color: var(--ink) !important;
-    }
-    button.settings-save:hover {
-      border-color: var(--ink) !important;
-    }
-    .settings-drawer {
-      position: fixed;
-      top: 0;
-      right: 0;
-      width: 320px;
-      max-width: 100vw;
-      height: 100vh;
-      background: var(--paper);
-      border-left: 1px solid var(--border);
-      padding: 24px;
-      z-index: 200;
-      transform: translateX(100%);
-      transition: transform 180ms ease;
-      overflow-y: auto;
-    }
-    .settings-drawer.open { transform: translateX(0); }
-    .settings-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(10, 10, 10, 0.12);
-      z-index: 190;
-    }
-    .settings-input {
-      width: 100%;
-      background: var(--paper2);
-      border: 1px solid var(--border);
-      color: var(--ink);
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      padding: 10px 12px;
-      outline: none;
-    }
-    .settings-input:focus {
-      background: var(--paper);
-      border-color: var(--gold);
-    }
-    .settings-helper {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-    .settings-link {
-      color: var(--rust);
-      text-decoration: underline;
-    }
     .card-grid { display: grid; background: var(--border); gap: 1px; border: 1px solid var(--border); }
     .card { background: var(--paper); padding: 24px; width: 100%; }
     .bob-shell-card {
@@ -728,12 +595,6 @@ const App = () => {
         <div className="hidden md:block label border border-[var(--border)] px-[14px] py-[6px] leading-none text-[10px] text-[var(--ink)] font-medium">
           Model: {activeModel}
         </div>
-        <button 
-          onClick={() => setSettingsOpen(true)}
-          className="settings-button label border border-[var(--border)] px-[14px] py-[6px] leading-none text-[10px] text-[var(--ink)] font-medium transition-base ml-2"
-        >
-          Settings
-        </button>
       </div>
     </nav>
   );
