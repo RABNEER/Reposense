@@ -165,9 +165,9 @@ def _run_async(method, *args):
     return asyncio.run(method(*args))
 
 def parse_json_response(raw: str) -> Dict:
-    \"\"\"
+    """
     Parse JSON from Bob's response, handling various formats.
-    \"\"\"
+    """
     try:
         raw = raw.strip()
         
@@ -201,7 +201,7 @@ def parse_json_response(raw: str) -> Dict:
     before_sleep=lambda retry_state: logger.warning(f"Retrying Bob API call (attempt {retry_state.attempt_number})...")
 )
 def _call(prompt: str, mode: str = "ask", system: str = None, api_key: str = None, base_url: str = None, project_id: str = None) -> str:
-    \"\"\"
+    """
     Core function to call IBM Watsonx API
     Args:
         prompt: User prompt
@@ -212,7 +212,7 @@ def _call(prompt: str, mode: str = "ask", system: str = None, api_key: str = Non
         project_id: Optional override for Watsonx project ID
     Returns: Raw response text
     Raises: BobAPIError on API errors
-    \"\"\"
+    """
     selected_api_key = api_key if api_key is not None else BOB_API_KEY
     selected_base_url = base_url or WATSONX_URL
     selected_project_id = project_id or WATSONX_PROJECT_ID
@@ -273,11 +273,11 @@ def _call(prompt: str, mode: str = "ask", system: str = None, api_key: str = Non
         raise BobAPIError(f"IBM Watsonx API error: {str(e)}")
 
 def analyze(repo_context: Dict) -> Dict:
-    \"\"\"
+    """
     Analyze repository using Plan mode.
     
     Returns: Complete analysis response
-    \"\"\"
+    """
     logger.info(f"Analyzing repository: {repo_context['repo_name']}")
     
     client = get_ai_client()
@@ -304,11 +304,11 @@ def analyze(repo_context: Dict) -> Dict:
         raise
 
 def find_issue(repo_context: Dict) -> Dict:
-    \"\"\"
+    """
     Find a beginner-friendly issue using Ask mode.
     
     Returns: Issue details
-    \"\"\"
+    """
     logger.info(f"Finding issue for {repo_context['repo_name']}")
     
     prompt = prompts.build_issue_prompt(repo_context)
@@ -323,11 +323,11 @@ def find_issue(repo_context: Dict) -> Dict:
         raise
 
 def plan_solution(repo_context: Dict, issue: Dict) -> Dict:
-    \"\"\"
+    """
     Plan solution for issue using Plan mode.
     
     Returns: Implementation plan
-    \"\"\"
+    """
     logger.info(f"Planning solution for: {issue.get('title', 'Unknown')}")
     
     prompt = prompts.build_plan_prompt(repo_context, issue)
@@ -342,11 +342,11 @@ def plan_solution(repo_context: Dict, issue: Dict) -> Dict:
         raise
 
 def generate_code(repo_context: Dict, issue: Dict, plan: Dict) -> Dict:
-    \"\"\"
+    """
     Generate code using Code mode.
     
     Returns: Code changes
-    \"\"\"
+    """
     logger.info("Generating code changes")
     
     prompt = prompts.build_code_prompt(repo_context, issue, plan)
@@ -361,11 +361,11 @@ def generate_code(repo_context: Dict, issue: Dict, plan: Dict) -> Dict:
         raise
 
 def explain_changes(changes: Dict) -> Dict:
-    \"\"\"
+    """
     Explain code changes using Ask mode.
     
     Returns: Explanation
-    \"\"\"
+    """
     logger.info("Generating explanation")
     
     prompt = prompts.build_explain_prompt(changes)
@@ -380,13 +380,13 @@ def explain_changes(changes: Dict) -> Dict:
         raise
 
 def orchestrate(repo_context: Dict) -> Dict:
-    \"\"\"
+    """
     Run full orchestration pipeline using Orchestrator mode.
     
     Chains: find_issue → plan_solution → generate_code → explain_changes
     
     Returns: Complete coding response
-    \"\"\"
+    """
     logger.info(f"Starting orchestration for {repo_context['repo_name']}")
     
     client = get_ai_client()
@@ -434,11 +434,11 @@ def orchestrate(repo_context: Dict) -> Dict:
         raise
 
 def ask(repo_context: Dict, question: str, history: List[Dict]) -> Dict:
-    \"\"\"
+    """
     Answer question about repository using Ask mode.
     
     Returns: Answer with file references
-    \"\"\"
+    """
     logger.info(f"Answering question for {repo_context['repo_name']}")
     
     client = get_ai_client()
@@ -465,11 +465,11 @@ def ask(repo_context: Dict, question: str, history: List[Dict]) -> Dict:
         raise
 
 def generate_doc(repo_context: Dict) -> str:
-    \"\"\"
+    """
     Generate markdown documentation using Plan mode.
     
     Returns: Markdown string
-    \"\"\"
+    """
     logger.info(f"Generating documentation for {repo_context['repo_name']}")
     
     client = get_ai_client()
@@ -488,9 +488,9 @@ def generate_doc(repo_context: Dict) -> str:
     return markdown
 
 def get_mock_response(mode: str) -> str:
-    \"\"\"
+    """
     Return mock responses for development/testing.
-    \"\"\"
+    """
     if mode == "plan":
         return json.dumps(get_mock_analysis())
     elif mode == "ask":
@@ -501,7 +501,7 @@ def get_mock_response(mode: str) -> str:
         return json.dumps(get_mock_analysis())
 
 def get_mock_analysis() -> Dict:
-    \"\"\"Complete mock analysis for expressjs/express\"\"\"
+    """Complete mock analysis for expressjs/express"""
     return {
         "project_name": "Express.js",
         "one_line_summary": "Fast, unopinionated, minimalist web framework for Node.js",
@@ -555,7 +555,7 @@ def get_mock_analysis() -> Dict:
     }
 
 def get_mock_coding() -> Dict:
-    \"\"\"Complete mock coding response\"\"\"
+    """Complete mock coding response"""
     return {
         "changes": [{
             "file": "lib/middleware/timeout.js",
@@ -580,7 +580,7 @@ def get_mock_coding() -> Dict:
     }
 
 def get_mock_answer(question: str) -> Dict:
-    \"\"\"Complete mock Q&A response\"\"\"
+    """Complete mock Q&A response"""
     return {
         "answer": "Express uses a layered middleware architecture. Each middleware function has access to `req`, `res`, and `next()`. Call `next()` to pass control to the next middleware in the stack. The router lives in `lib/router/index.js` and matches HTTP methods and paths to handler functions.",
         "files_referenced": ["lib/router/index.js", "lib/application.js", "lib/middleware/init.js"],
