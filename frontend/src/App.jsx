@@ -44,6 +44,8 @@ const App = () => {
   const startTimeRef = useRef(null);
   const shellRunRef = useRef(0);
   const analyzingRef = useRef(false);
+  const codingResultReadyRef = useRef(false);
+  const codingRequestDoneRef = useRef(false);
 
   // ─── CONSTANTS ───
   const steps = [
@@ -236,6 +238,20 @@ const App = () => {
       for (let i = 0; i < SHELL_SEQUENCE.length; i++) {
         if (shellRunRef.current !== runId) return;
         const line = SHELL_SEQUENCE[i];
+        const isFinalLine = i === SHELL_SEQUENCE.length - 1;
+
+        if (isFinalLine) {
+          while (!codingResultReadyRef.current && !codingRequestDoneRef.current) {
+            if (shellRunRef.current !== runId) return;
+            await sleep(150);
+          }
+
+          if (!codingResultReadyRef.current) {
+            setShellDone(true);
+            return;
+          }
+        }
+
         const charDelay = line.type === 'command' ? 40 : 12;
 
         let typed = '';
@@ -286,6 +302,8 @@ const App = () => {
     analyzingRef.current = true;
     shellRunRef.current += 1;
     setCoding(null);
+    codingResultReadyRef.current = false;
+    codingRequestDoneRef.current = false;
     setShellLines([]);
     setTypingText('');
     setShellDone(false);
@@ -302,6 +320,8 @@ const App = () => {
     setAppState('hero');
     setAnalysis(null);
     setCoding(null);
+    codingResultReadyRef.current = false;
+    codingRequestDoneRef.current = false;
     analyzingRef.current = false;
     shellRunRef.current += 1;
     setShellLines([]);
@@ -318,6 +338,8 @@ const App = () => {
   const handleKickstart = async () => {
     shellRunRef.current += 1;
     setCoding(null);
+    codingResultReadyRef.current = false;
+    codingRequestDoneRef.current = false;
     setShellLines([]);
     setTypingText('');
     setShellDone(false);
@@ -327,6 +349,8 @@ const App = () => {
     setActiveMode(-1);
     try {
       const data = await kickstartTask(repoUrl);
+      codingResultReadyRef.current = true;
+      codingRequestDoneRef.current = true;
       setCoding(data);
       // Mode chain animation
       for (let i = 0; i < 4; i++) {
@@ -334,6 +358,7 @@ const App = () => {
         await new Promise(r => setTimeout(r, 400));
       }
     } catch (err) {
+      codingRequestDoneRef.current = true;
       setApiError(err.message);
     } finally {
       setCodingLoading(false);
