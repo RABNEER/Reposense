@@ -183,29 +183,32 @@ class ErrorResponse(BaseModel):
 
 def safe_error(e: Exception, context: str = "") -> str:
     error_str = str(e).lower()
-
+    
     if "rate limit" in error_str or "429" in error_str:
-        return "AI service rate limit reached. Please try again in a moment."
-
+        return "IBM Bob is experiencing high demand. Please wait a moment and try again."
+    
+    if "quota" in error_str:
+        return "IBM Bob usage quota reached. Please try again in a moment."
+    
     if "timeout" in error_str or "timed out" in error_str:
-        return "Request timed out. Try a smaller repository."
-
-    if "api key" in error_str or "auth" in error_str or "401" in error_str:
-        return "Invalid API key. Check your settings."
-
+        return "IBM Bob is taking longer than expected. Try a smaller repository."
+    
+    if "503" in error_str or "unavailable" in error_str:
+        return "IBM Bob is temporarily unavailable. Please try again shortly."
+    
+    if "api key" in error_str or "401" in error_str:
+        return "IBM Bob authentication error. Please check your settings."
+    
     if "not found" in error_str or "404" in error_str:
-        return "Repository not found. Check the URL."
-
+        return "Repository not found. Please check the GitHub URL."
+    
     if "private" in error_str or "403" in error_str:
-        return "Repository is private or access denied."
-
-    if "quota" in error_str or "billing" in error_str:
-        return "API quota exceeded. Try again later."
-
+        return "This repository is private. Please use a public repository."
+    
     if context:
-        return f"{context} failed. Please try again."
-
-    return "Something went wrong. Please try again."
+        return f"IBM Bob could not complete the {context.lower()} analysis. Please try again."
+    
+    return "IBM Bob encountered an issue. Please try again."
 
 
 def get_request_config(http_request: Request) -> dict:

@@ -71,29 +71,30 @@ class GroqClient:
                     )
 
                     if response.status_code == 429:
-                        wait = (attempt + 1) * 10
-                        logger.warning(f"Groq rate limit. Retry {attempt+1}/{max_retries} after {wait}s")
+                        wait = 15
+                        logger.warning(f"IBM Bob is waiting {wait}s due to high demand. Retry {attempt+1}/{max_retries}")
                         await asyncio.sleep(wait)
-                        last_error = "Rate limit"
+                        last_error = "IBM Bob is experiencing high demand. Please wait a moment and try again."
                         continue
 
                     if response.status_code != 200:
-                        raise Exception(f"Groq error {response.status_code}: {response.text[:200]}")
+                        raise Exception(f"IBM Bob error {response.status_code}: {response.text[:200]}")
 
                     data = response.json()
                     text = data["choices"][0]["message"]["content"]
-                    logger.info(f"Groq success (attempt {attempt+1}): {text[:100]}")
+                    logger.info(f"IBM Bob success (attempt {attempt+1}): {text[:100]}")
                     return text
 
             except Exception as e:
-                if "429" in str(e) or "rate" in str(e).lower():
-                    wait = (attempt + 1) * 10
+                if "429" in str(e) or "rate" in str(e).lower() or "high demand" in str(e).lower():
+                    wait = 15
+                    logger.warning(f"IBM Bob is waiting {wait}s due to high demand. Retry {attempt+1}/{max_retries}")
                     await asyncio.sleep(wait)
-                    last_error = str(e)
+                    last_error = "IBM Bob is experiencing high demand. Please wait a moment and try again."
                     continue
                 raise
 
-        raise Exception(f"Groq failed after {max_retries} attempts: {last_error}")
+        raise Exception(last_error or "IBM Bob is experiencing high demand. Please wait a moment and try again.")
 
     def parse_json_response(self, raw: str) -> dict:
         if not raw:

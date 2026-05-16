@@ -444,6 +444,81 @@ const App = () => {
       setChatMessages([...newMessages, { role: 'bob', content: 'Encountered an error. Please try again.' }]);
     } finally {
       setIsTyping(false);
+    try {
+      const data = await kickstartTask(repoUrl);
+      setCoding(data);
+      // Mode chain animation
+      for (let i = 0; i < 4; i++) {
+        setActiveMode(i);
+        await new Promise(r => setTimeout(r, 400));
+      }
+    } catch (err) {
+      setApiError(err.message);
+    } finally {
+      setCodingLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      await exportMarkdown(repoUrl);
+    } catch (err) {
+      setApiError('Export failed: ' + err.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleSaveSettings = () => {
+    localStorage.setItem('ai_provider', aiProvider);
+    localStorage.setItem('ibm_bob_key', ibmBobKey.trim());
+    localStorage.setItem('ibm_bob_base_url', ibmBobBaseUrl.trim());
+    localStorage.setItem('watsonx_key', watsonxKey.trim());
+    localStorage.setItem('watsonx_project_id', watsonxProjectId.trim());
+    localStorage.setItem('watsonx_url', watsonxUrl.trim());
+    localStorage.setItem('openrouter_key', openrouterKey.trim());
+    localStorage.setItem('groq_key', groqKey.trim());
+    localStorage.setItem('github_token', githubToken.trim());
+
+    // Auto-set mock mode based on keys
+    const hasBobKey = ibmBobKey && ibmBobKey.trim().length > 0;
+    const hasWatsonxKey = watsonxKey && watsonxKey.trim().length > 0;
+    const hasOpenRouterKey = openrouterKey && openrouterKey.trim().length > 0;
+    const hasGroqKey = groqKey && groqKey.trim().length > 0;
+    const hasAnyKey = hasBobKey || hasWatsonxKey || hasOpenRouterKey || hasGroqKey;
+
+    if (hasAnyKey) {
+      localStorage.setItem('mock_mode', 'false');
+    } else {
+      localStorage.setItem('mock_mode', 'true');
+    }
+
+    if (mockModeManualOverride) {
+      localStorage.setItem('mock_mode', mockModeToggle ? 'true' : 'false');
+    }
+
+    const stored = localStorage.getItem('mock_mode');
+    setMockModeToggle(stored === 'true');
+    setSettingsOpen(false);
+  };
+
+  const handleSend = async (q = chatInput) => {
+    const question = q.trim();
+    if (!question) return;
+
+    const newMessages = [...chatMessages, { role: 'user', content: question }];
+    setChatMessages(newMessages);
+    setChatInput('');
+    setIsTyping(true);
+
+    try {
+      const response = await askQuestion(repoUrl, question, newMessages);
+      setChatMessages([...newMessages, { role: 'bob', content: response.answer }]);
+    } catch (err) {
+      setChatMessages([...newMessages, { role: 'bob', content: 'Encountered an error. Please try again.' }]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -465,23 +540,15 @@ const App = () => {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-');
-  const hasCustomApi = Boolean(ibmBobKey.trim() || watsonxKey.trim() || openrouterKey.trim() || groqKey.trim() || githubToken.trim());
-  const apiStatus = mockModeToggle
-    ? { label: '○ DEMO — Mock', color: 'var(--gold)' }
-    : aiProvider === 'openrouter'
-      ? { label: '● LIVE — OpenRouter', color: '#2563eb' }
-      : aiProvider === 'groq'
-        ? { label: '● LIVE — Groq', color: '#f59e0b' }
-        : { label: '● LIVE — IBM Bob', color: 'var(--sage)' };
+  
+  const mockMode = localStorage.getItem('mock_mode');
+  const hasCustomApi = true;
+  const apiStatus = mockMode === 'true'
+    ? { label: '○ DEMO', color: 'var(--gold)' }
+    : { label: '● LIVE — IBM BOB', color: 'var(--sage)' };
 
   // ─── STYLES ───
-  const activeModel = mockModeToggle
-    ? 'mock-engine'
-    : aiProvider === 'openrouter'
-      ? 'ibm/granite-4.1-8b-instruct'
-      : aiProvider === 'groq'
-        ? 'llama-3.3-70b-versatile'
-        : 'meta-llama/llama-3-3-70b-instruct';
+  const activeModel = 'ibm/granite-4.1-8b-instruct';
 
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500;600&display=swap');
@@ -740,20 +807,6 @@ const App = () => {
         <div className="hidden md:block label border border-[var(--border)] px-[14px] py-[6px] leading-none text-[10px] text-[var(--ink)] font-medium">
           Model: {activeModel}
         </div>
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="settings-button relative border border-[var(--border)] bg-transparent px-3 py-[6px] text-[11px] text-[var(--ink)] font-medium transition-base"
-          title={hasCustomApi ? '● Custom API' : '○ Default (Mock)'}
-        >
-          <span
-            className="inline-block w-[6px] h-[6px] mr-2 align-middle"
-            style={{ background: hasCustomApi ? 'var(--sage)' : 'var(--dim)' }}
-          />
-          ⚙ Settings
-        </button>
-      </div>
-    </nav>
   );
 
   const SettingsPanel = () => (
