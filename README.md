@@ -9,6 +9,14 @@
 [![Watsonx](https://img.shields.io/badge/Powered%20By-IBM%20Watsonx-be95ff?style=for-the-badge)](https://www.ibm.com/watsonx)
 [![Hackathon](https://img.shields.io/badge/Event-IBM%20Bob%20Hackathon-red?style=for-the-badge)](https://ibm-bob.devpost.com/)
 
+<br/>
+
+[![React](https://img.shields.io/badge/React-20232a?style=flat-square&logo=react&logoColor=61dafb)](https://reactjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python-3776ab?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Tailwind](https://img.shields.io/badge/Tailwind-06b6d4?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Vite](https://img.shields.io/badge/Vite-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+
 ---
 
 **RepoSense** is an enterprise-grade repository onboarding tool. By leveraging the full power of **IBM Bob** orchestration and **IBM Watsonx Granite** models, it transforms complex codebases into actionable insights instantly.
