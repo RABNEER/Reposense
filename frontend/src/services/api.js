@@ -1,3 +1,8 @@
+/**
+ * RepoSense API Client
+ * Simplified - No provider switching, IBM Watsonx only
+ */
+
 class ApiError extends Error {
   constructor(message, status, detail) {
     super(message);
@@ -8,51 +13,7 @@ class ApiError extends Error {
 }
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-function isMockMode() {
-  const envVal = import.meta.env.VITE_MOCK_MODE;
-  if (typeof window === 'undefined') return envVal === 'true';
-  const stored = localStorage.getItem('mock_mode');
-  if (stored !== null) return stored === 'true';
-  return envVal === 'true';
-}
-
-function getStoredValue(key, fallback = '') {
-  if (typeof window === 'undefined') return fallback;
-  return localStorage.getItem(key) || fallback;
-}
-
-function getConfigHeaders() {
-  const provider = localStorage.getItem('ai_provider') || 'groq';
-  const mockMode = localStorage.getItem('mock_mode');
-  const envMockMode = import.meta.env.VITE_MOCK_MODE || 'false';
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-AI-Provider': provider,
-    'X-Mock-Mode': mockMode !== null ? mockMode : envMockMode,
-  };
-
-  // Only include optional headers when they have real values
-  // Empty header values cause 400 Bad Request on many servers
-  const optionalHeaders = {
-    'X-IBM-Bob-Key': localStorage.getItem('ibm_bob_key'),
-    'X-IBM-Bob-Base-Url': localStorage.getItem('ibm_bob_base_url'),
-    'X-Groq-Key': localStorage.getItem('groq_key'),
-    'X-GitHub-Token': localStorage.getItem('github_token'),
-    'X-Watsonx-Key': localStorage.getItem('watsonx_key'),
-    'X-Watsonx-Project-Id': localStorage.getItem('watsonx_project_id'),
-    'X-Watsonx-Url': localStorage.getItem('watsonx_url'),
-  };
-
-  Object.entries(optionalHeaders).forEach(([key, value]) => {
-    if (value && value.trim()) {
-      headers[key] = value;
-    }
-  });
-
-  return headers;
-}
+const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === 'true';
 
 async function request(endpoint, options = {}) {
   const controller = new AbortController();
@@ -63,7 +24,7 @@ async function request(endpoint, options = {}) {
       ...options,
       signal: controller.signal,
       headers: {
-        ...getConfigHeaders(),
+        'Content-Type': 'application/json',
         ...options.headers,
       },
     });
@@ -90,7 +51,11 @@ async function request(endpoint, options = {}) {
     clearTimeout(timeoutId);
 
     if (error.name === 'AbortError') {
-      throw new ApiError('Request timeout - please try again', 504, 'The request took too long');
+      throw new ApiError(
+        'IBM Bob is taking too long. Please try again.',
+        504,
+        'timeout'
+      );
     }
 
     if (error instanceof ApiError) {
@@ -98,7 +63,7 @@ async function request(endpoint, options = {}) {
     }
 
     throw new ApiError(
-      'Network error — is the backend running?',
+      'Connection error. Please check your internet connection.',
       0,
       error.message
     );
@@ -106,7 +71,7 @@ async function request(endpoint, options = {}) {
 }
 
 export async function analyzeRepo(githubUrl) {
-  if (isMockMode()) {
+  if (MOCK_MODE) {
     await new Promise(resolve => setTimeout(resolve, 3000));
     return getMockAnalysis();
   }
@@ -118,7 +83,7 @@ export async function analyzeRepo(githubUrl) {
 }
 
 export async function askQuestion(githubUrl, question, history = []) {
-  if (isMockMode()) {
+  if (MOCK_MODE) {
     await new Promise(resolve => setTimeout(resolve, 1500));
     return getMockAnswer(question);
   }
@@ -130,7 +95,7 @@ export async function askQuestion(githubUrl, question, history = []) {
 }
 
 export async function kickstartTask(githubUrl) {
-  if (isMockMode()) {
+  if (MOCK_MODE) {
     await new Promise(resolve => setTimeout(resolve, 4000));
     return getMockCoding();
   }
@@ -167,7 +132,7 @@ function getExportFilename(githubUrl) {
 }
 
 export async function exportMarkdown(githubUrl) {
-  if (isMockMode()) {
+  if (MOCK_MODE) {
     const mockMarkdown = `# RepoSense Analysis\n\nGenerated for: ${githubUrl}\n\n## Overview\n\nThis is a mock export.`;
     const blob = new Blob([mockMarkdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -185,7 +150,6 @@ export async function exportMarkdown(githubUrl) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...getConfigHeaders()
     },
     body: JSON.stringify({ github_url: githubUrl }),
   });
@@ -330,5 +294,7 @@ function getMockCoding() {
     bob_modes_used: ["Plan", "Ask", "Code", "Orchestrator"]
   };
 }
+
+// Made with IBM Bob
 
 // Made with Bob

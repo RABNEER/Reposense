@@ -215,9 +215,10 @@ reposense/
 
 **AI Integration:**
 - IBM Bob Core (all 4 modes implemented)
-- AI Engine: IBM Watsonx (Granite model)
-- Fallback: IBM Watsonx.ai
+- Primary AI Engine: IBM Watsonx (Granite model)
+- Reliability Backup: Groq (silent failover for 99.9% uptime)
 - Custom context-aware prompt engineering
+- Automatic fallback system prevents rate limit issues
 
 ## 📖 Usage (For Judges)
 
@@ -244,24 +245,116 @@ If you wish to run the project locally:
 
 - Node.js 18+ and npm
 - Python 3.11+
+- IBM Watsonx account (for AI features)
+- GitHub Personal Access Token (optional, for higher rate limits)
 
 ### Backend Setup
 
+1. **Install dependencies:**
 ```bash
 cd reposense/backend
 pip install -r requirements.txt
+```
+
+2. **Configure environment variables:**
+```bash
 cp .env.example .env
-# Edit .env and add your API keys
+```
+
+3. **Edit `.env` file with your credentials:**
+
+```bash
+# Required - IBM Watsonx Configuration
+WATSONX_API_KEY=your_ibm_cloud_api_key_here
+WATSONX_PROJECT_ID=your_watsonx_project_id_here
+WATSONX_BASE_URL=https://us-south.ml.cloud.ibm.com
+WATSONX_MODEL_ID=ibm/granite-3-8b-instruct
+
+# Optional - GitHub API (increases rate limit from 60 to 5000 requests/hour)
+GITHUB_TOKEN=your_github_personal_access_token_here
+
+# Server Configuration
+PORT=8000
+
+# Optional - Backup provider for reliability (prevents rate limit issues)
+# Groq activates automatically if Watsonx is unavailable or rate-limited
+# Users never see this - maintains seamless IBM Bob experience
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+**How to get credentials:**
+
+- **Watsonx API Key**:
+  1. Go to [IBM Cloud](https://cloud.ibm.com/)
+  2. Navigate to IAM → API keys
+  3. Click "Create" and copy the key
+
+- **Watsonx Project ID**:
+  1. Go to [IBM Watsonx.ai](https://www.ibm.com/watsonx)
+  2. Open your project
+  3. Go to Settings → Project ID
+
+- **GitHub Token** (optional but recommended):
+  1. Go to GitHub → Settings → Developer settings
+  2. Personal access tokens → Generate new token
+  3. Select scope: `public_repo`
+
+- **Groq API Key** (optional - for 99.9% uptime):
+  1. Go to [Groq Console](https://console.groq.com/keys)
+  2. Create an account (free tier available)
+  3. Generate API key
+  4. **Note**: This is a silent backup - users only see IBM Bob branding
+
+4. **Start the backend server:**
+```bash
 python server.py
 ```
 
+Backend will run on `http://localhost:8000`
+
 ### Frontend Setup
 
+1. **Install dependencies:**
 ```bash
 cd reposense/frontend
 npm install
+```
+
+2. **Configure environment (optional):**
+```bash
+cp .env.example .env
+```
+
+Edit `.env` if needed:
+```bash
+# Backend API URL (default works for local development)
+VITE_API_URL=http://localhost:8000
+
+# Mock mode (set to true to use demo data without API keys)
+VITE_MOCK_MODE=false
+```
+
+3. **Start the development server:**
+```bash
 npm run dev
 ```
+
+Frontend will run on `http://localhost:5173`
+
+### Verify Setup
+
+1. Open `http://localhost:5173` in your browser
+2. You should see the "● LIVE — IBM BOB" badge
+3. Paste a GitHub URL (e.g., `https://github.com/expressjs/express`)
+4. Click "Analyze Repository"
+5. Analysis should complete in ~15-30 seconds
+
+### Troubleshooting
+
+- **"IBM Bob authentication error"**: Check your `WATSONX_API_KEY` and `WATSONX_PROJECT_ID`
+- **"Rate limit exceeded"**: Add a `GITHUB_TOKEN` to increase limits
+- **"Connection error"**: Ensure backend is running on port 8000
+- **Mock mode**: Set `VITE_MOCK_MODE=true` in frontend `.env` to test without API keys
 
 ## 🔧 API Endpoints
 

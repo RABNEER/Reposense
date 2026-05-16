@@ -1,3 +1,8 @@
+"""
+RepoSense FastAPI Server
+IBM Watsonx Granite as primary AI provider
+"""
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -7,36 +12,26 @@ load_dotenv(dotenv_path=env_path)
 
 import time
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-import asyncio
 
 try:
     from backend.github_parser import build_repo_context, GitHubParserError
-    from backend.bob_client import (
-        get_ai_client, BobAPIError, BobParseError, MOCK_MODE
-    )
+    from backend.bob_client import get_ai_client, BobAPIError, BobParseError
     from backend.mock_data import (
         get_mock_analyze_response, get_mock_orchestrate_response, get_mock_ask_response
     )
 except ImportError:
     from github_parser import build_repo_context, GitHubParserError
-    from bob_client import (
-        get_ai_client, BobAPIError, BobParseError, MOCK_MODE
-    )
+    from bob_client import get_ai_client, BobAPIError, BobParseError
     from mock_data import (
         get_mock_analyze_response, get_mock_orchestrate_response, get_mock_ask_response
     )
-
-
-try:
-    from backend.bob_client import BobClient
-except ImportError:
-    from bob_client import BobClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,33 +40,36 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("=" * 60)
-    logger.info("RepoSense Backend Starting")
+    logger.info("RepoSense — IBM Bob Hackathon")
     logger.info("=" * 60)
-
-    api_key = os.getenv("IBM_BOB_API_KEY", "")
-    groq_key = os.getenv("WATSONX_API_KEY") or os.getenv("GROQ_API_KEY", "")
-    github_token = os.getenv("GITHUB_TOKEN")
-    port = os.getenv("PORT", "8000")
-
-    if api_key and api_key != "mock":
-        logger.info("IBM Bob API key configured")
-    if groq_key:
-        logger.info("IBM Watsonx configured — Granite model ready")
-    if not api_key and not groq_key:
-        logger.warning("MOCK MODE ENABLED - Using simulated AI responses")
-
-    if github_token:
-        logger.info("GitHub token configured (higher rate limits)")
+    
+    watsonx_key = os.getenv("WATSONX_API_KEY", "")
+    watsonx_project = os.getenv("WATSONX_PROJECT_ID", "")
+    github_token = os.getenv("GITHUB_TOKEN", "")
+    
+    if watsonx_key and watsonx_project:
+        logger.info(
+            "✓ IBM Watsonx Granite — ACTIVE"
+        )
     else:
-        logger.warning("No GitHub token - rate limits apply")
-
-    logger.info(f"Server will run on port {port}")
+        logger.warning(
+            "⚠ IBM Watsonx not configured — demo mode"
+        )
+    
+    if github_token:
+        logger.info(
+            "✓ GitHub API — authenticated (5000 req/hr)"
+        )
+    else:
+        logger.warning(
+            "⚠ GitHub API — public limits (60 req/hr)"
+        )
+    
+    logger.info("✓ RepoSense Ready")
     logger.info("=" * 60)
-    logger.info("RepoSense Ready")
-    logger.info("=" * 60)
-
+    
     yield
-
+    
     logger.info("RepoSense shutting down")
 
 
@@ -86,22 +84,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=[
-        "*",
         "Content-Type",
-        "Authorization",
-        "X-IBM-Bob-Key",
-        "X-IBM-Bob-Base-Url",
-        "X-AI-Provider",
-        "X-Mock-Mode",
+        "Authorization", 
         "X-GitHub-Token",
-        "X-Groq-Key",
-        "X-Watsonx-Key",
-        "X-Watsonx-Project-Id",
-        "X-Watsonx-Url",
+        "X-Mock-Mode",
     ],
-    expose_headers=["*"],
     max_age=86400
 )
 
@@ -173,6 +162,7 @@ class ErrorResponse(BaseModel):
 
 
 def safe_error(e: Exception, context: str = "") -> str:
+    """Convert exceptions to user-friendly error messages"""
     error_str = str(e).lower()
     
     if "rate limit" in error_str or "429" in error_str:
@@ -203,45 +193,29 @@ def safe_error(e: Exception, context: str = "") -> str:
 
 
 def get_request_config(http_request: Request) -> dict:
+    """Extract configuration from request headers"""
     headers = http_request.headers
-    # Watsonx credentials: prefer dedicated X-Watsonx-* headers, fall back to X-IBM-Bob-Key / env
-    watsonx_key = headers.get("X-Watsonx-Key") or headers.get("X-IBM-Bob-Key") or os.getenv("IBM_BOB_API_KEY", os.getenv("WATSONX_API_KEY", ""))
-    watsonx_project_id = headers.get("X-Watsonx-Project-Id") or os.getenv("WATSONX_PROJECT_ID", "")
-    watsonx_url = headers.get("X-Watsonx-Url") or headers.get("X-IBM-Bob-Base-Url") or os.getenv("WATSONX_URL", "https://us-south.ml.cloud.ibm.com")
     return {
-        "bob_key": watsonx_key,
-        "bob_base_url": watsonx_url,
-        "watsonx_project_id": watsonx_project_id,
-        "groq_key": (headers.get("X-Groq-Key") or
-                     os.getenv("WATSONX_API_KEY") or
-                     os.getenv("GROQ_API_KEY", "")),
-        "github_token": headers.get("X-GitHub-Token") or os.getenv("GITHUB_TOKEN"),
-        "provider": headers.get("X-AI-Provider", "groq"),
+        "github_token": (
+            headers.get("X-GitHub-Token") or
+            os.getenv("GITHUB_TOKEN")
+        ),
         "mock": headers.get("X-Mock-Mode", "false")
     }
 
 
 def get_configured_client(config: dict):
-    try:
-        from backend.bob_client import BobClient
-    except ImportError:
-        from bob_client import BobClient
-
-    return get_ai_client(
-        bob_key=config["bob_key"],
-        groq_key=config["groq_key"],
-        provider=config["provider"],
-        mock_mode=config["mock"],
-        bob_base_url=config["bob_base_url"],
-        watsonx_project_id=config.get("watsonx_project_id")
-    )
+    """Get AI client (Watsonx primary, Groq fallback, mock last resort)"""
+    return get_ai_client()
 
 
-def using_mock(config: dict, client) -> bool:
-    return client is None or str(config["mock"]).lower() == "true"
+def is_mock_mode(client) -> bool:
+    """Check if running in mock mode"""
+    return client is None
 
 
 async def call_ai(client, method_name: str, timeout: float, *args):
+    """Call AI client method with timeout"""
     method = getattr(client, method_name)
     if asyncio.iscoroutinefunction(method):
         return await asyncio.wait_for(method(*args), timeout=timeout)
@@ -263,181 +237,279 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/api/health")
 async def health_check():
-    try:
-        from backend.bob_client import BobClient
-    except ImportError:
-        from bob_client import BobClient
-
-    api_key = os.getenv("IBM_BOB_API_KEY", "")
-    groq_key = os.getenv("WATSONX_API_KEY") or os.getenv("GROQ_API_KEY", "")
+    """Health check endpoint"""
+    watsonx_key = os.getenv("WATSONX_API_KEY", "")
+    watsonx_project = os.getenv("WATSONX_PROJECT_ID", "")
+    github_token = os.getenv("GITHUB_TOKEN", "")
+    
+    watsonx_ready = bool(watsonx_key and watsonx_project)
+    
     return {
         "status": "ok",
         "version": "1.0.0",
-        "bob_connected": bool(api_key and api_key != ""),
-        "watsonx_connected": bool(groq_key),
-        "mock_mode": MOCK_MODE,
+        "ibm_watsonx": "connected" if watsonx_ready
+                       else "demo mode",
+        "github": "authenticated" if github_token
+                  else "public rate limits",
+        "ai_engine": "IBM Watsonx Granite" if watsonx_ready
+                     else "Demo Mode",
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }
 
 
 @app.post("/api/analyze")
-async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
+async def analyze_repository(
+    payload: AnalyzeRequest,
+    http_request: Request
+):
+    """Analyze a GitHub repository"""
     try:
-        from backend.bob_client import BobClient
-    except ImportError:
-        from bob_client import BobClient
-
-    try:
-        logger.info(f"Analyzing repository: {payload.github_url}")
+        logger.info(
+            f"Analyzing repository: {payload.github_url}"
+        )
+        
         config = get_request_config(http_request)
         ai_client = get_configured_client(config)
-
-        # Update config with determined client
-        config["client"] = ai_client
-
-        if using_mock(config, ai_client):
-            logger.info("Using mock analysis response")
-            return get_mock_analyze_response(payload.github_url)
-
-        repo_context = await build_repo_context(payload.github_url, config["github_token"])
-        logger.info(f"Repository context built: {repo_context['repo_name']}")
-
-        analysis = await call_ai(ai_client, "analyze", 45.0, repo_context)
-
-        logger.info(f"Analysis complete for {repo_context['repo_name']}")
+        
+        if is_mock_mode(ai_client):
+            logger.info("Using demo analysis response")
+            return get_mock_analyze_response(
+                payload.github_url
+            )
+        
+        repo_context = await build_repo_context(
+            payload.github_url,
+            config["github_token"]
+        )
+        logger.info(
+            f"Repository context built: "
+            f"{repo_context['repo_name']}"
+        )
+        
+        analysis = await call_ai(
+            ai_client, "analyze", 120.0, repo_context
+        )
+        
+        logger.info(
+            f"Analysis complete for "
+            f"{repo_context['repo_name']}"
+        )
         return analysis
-
-    except asyncio.TimeoutError as e:
-        logger.error(f"Analysis timeout for {payload.github_url}")
-        logger.warning("Falling back to MOCK MODE due to timeout.")
-        return get_mock_analyze_response(payload.github_url)
+        
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=safe_error(
+                Exception("timeout"), "Analysis"
+            )
+        )
     except GitHubParserError as e:
-        logger.error(f"GitHub parser error: {str(e)}")
-        if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail=safe_error(e, "Analysis"))
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=safe_error(e, "Analysis"))
-        raise HTTPException(status_code=400, detail=safe_error(e, "Analysis"))
-    except (BobAPIError, BobParseError, Exception) as e:
-        logger.exception("AI provider error:")
-        logger.warning("Falling back to MOCK MODE due to AI provider error.")
-        return get_mock_analyze_response(payload.github_url)
+        err = str(e).lower()
+        if "private" in err:
+            raise HTTPException(
+                status_code=403,
+                detail="This repository is private. "
+                       "Please use a public repository."
+            )
+        if "not found" in err:
+            raise HTTPException(
+                status_code=404,
+                detail="Repository not found. "
+                       "Please check the GitHub URL."
+            )
+        raise HTTPException(
+            status_code=400,
+            detail=safe_error(e, "GitHub")
+        )
+    except Exception as e:
+        logger.exception("Analysis error:")
+        raise HTTPException(
+            status_code=502,
+            detail=safe_error(e, "Analysis")
+        )
 
 
 @app.post("/api/ask")
-async def ask_question(payload: AskRequest, http_request: Request):
+async def ask_question(
+    payload: AskRequest,
+    http_request: Request
+):
+    """Ask a question about a repository"""
     try:
-        from backend.bob_client import BobClient
-    except ImportError:
-        from bob_client import BobClient
-
-    try:
-        logger.info(f"Question for {payload.github_url}: {payload.question[:50]}...")
+        logger.info(
+            f"Question for {payload.github_url}: "
+            f"{payload.question[:50]}..."
+        )
+        
         config = get_request_config(http_request)
         ai_client = get_configured_client(config)
-
-        # Update config with determined client
-        config["client"] = ai_client
-
-        if using_mock(config, ai_client):
-            logger.info("Using mock ask response")
-            return get_mock_ask_response(payload.github_url, payload.question)
-
-        repo_context = await build_repo_context(payload.github_url, config["github_token"])
-        response = await call_ai(ai_client, "ask", 45.0, repo_context, payload.question, payload.history)
-
-        logger.info(f"Question answered for {repo_context['repo_name']}")
+        
+        if is_mock_mode(ai_client):
+            logger.info("Using demo ask response")
+            return get_mock_ask_response(
+                payload.github_url, payload.question
+            )
+        
+        repo_context = await build_repo_context(
+            payload.github_url,
+            config["github_token"]
+        )
+        
+        response = await call_ai(
+            ai_client, "ask", 120.0,
+            repo_context, payload.question, payload.history
+        )
+        
+        logger.info(
+            f"Question answered for "
+            f"{repo_context['repo_name']}"
+        )
         return response
-
-    except asyncio.TimeoutError as e:
-        logger.error(f"Question timeout for {payload.github_url}")
-        logger.warning("Falling back to MOCK MODE due to timeout.")
-        return get_mock_ask_response(payload.github_url, payload.question)
+        
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=safe_error(
+                Exception("timeout"), "Question"
+            )
+        )
     except GitHubParserError as e:
-        logger.error(f"GitHub parser error: {str(e)}")
-        if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail=safe_error(e, "Question"))
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=safe_error(e, "Question"))
-        raise HTTPException(status_code=400, detail=safe_error(e, "Question"))
-    except (BobAPIError, BobParseError, Exception) as e:
-        logger.exception("AI provider error:")
-        logger.warning("Falling back to MOCK MODE due to AI provider error.")
-        return get_mock_ask_response(payload.github_url, payload.question)
+        err = str(e).lower()
+        if "private" in err:
+            raise HTTPException(
+                status_code=403,
+                detail="This repository is private. "
+                       "Please use a public repository."
+            )
+        if "not found" in err:
+            raise HTTPException(
+                status_code=404,
+                detail="Repository not found. "
+                       "Please check the GitHub URL."
+            )
+        raise HTTPException(
+            status_code=400,
+            detail=safe_error(e, "GitHub")
+        )
+    except Exception as e:
+        logger.exception("Question error:")
+        raise HTTPException(
+            status_code=502,
+            detail=safe_error(e, "Question")
+        )
 
 
 @app.post("/api/task")
-async def kickstart_task(payload: TaskRequest, http_request: Request):
+async def kickstart_task(
+    payload: TaskRequest,
+    http_request: Request
+):
+    """Run full orchestration pipeline"""
     try:
-        from backend.bob_client import BobClient
-    except ImportError:
-        from bob_client import BobClient
-
-    try:
-        logger.info(f"Starting orchestration for {payload.github_url}")
+        logger.info(
+            f"Starting orchestration for {payload.github_url}"
+        )
+        
         config = get_request_config(http_request)
         ai_client = get_configured_client(config)
-
-        # Update config with determined client
-        config["client"] = ai_client
-
-        if using_mock(config, ai_client):
-            logger.info("Using mock orchestration response")
-            return get_mock_orchestrate_response(payload.github_url)
-
-        repo_context = await build_repo_context(payload.github_url, config["github_token"])
-        logger.info(f"Running full orchestration pipeline for {repo_context['repo_name']}")
-
-        coding_response = await call_ai(ai_client, "orchestrate", 45.0, repo_context)
-
-        logger.info(f"Orchestration complete for {repo_context['repo_name']}")
+        
+        if is_mock_mode(ai_client):
+            logger.info("Using demo orchestration response")
+            return get_mock_orchestrate_response(
+                payload.github_url
+            )
+        
+        repo_context = await build_repo_context(
+            payload.github_url,
+            config["github_token"]
+        )
+        logger.info(
+            f"Running full orchestration pipeline for "
+            f"{repo_context['repo_name']}"
+        )
+        
+        coding_response = await call_ai(
+            ai_client, "orchestrate", 120.0, repo_context
+        )
+        
+        logger.info(
+            f"Orchestration complete for "
+            f"{repo_context['repo_name']}"
+        )
         return coding_response
-
-    except asyncio.TimeoutError as e:
-        logger.error(f"Orchestration timeout for {payload.github_url}")
-        logger.warning("Falling back to MOCK MODE due to timeout.")
-        return get_mock_orchestrate_response(payload.github_url)
+        
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=safe_error(
+                Exception("timeout"), "Orchestration"
+            )
+        )
     except GitHubParserError as e:
-        logger.error(f"GitHub parser error: {str(e)}")
-        if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail=safe_error(e, "Orchestration"))
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=safe_error(e, "Orchestration"))
-        raise HTTPException(status_code=400, detail=safe_error(e, "Orchestration"))
-    except (BobAPIError, BobParseError, Exception) as e:
-        logger.exception("AI provider error:")
-        logger.warning("Falling back to MOCK MODE due to AI provider error.")
-        return get_mock_orchestrate_response(payload.github_url)
+        err = str(e).lower()
+        if "private" in err:
+            raise HTTPException(
+                status_code=403,
+                detail="This repository is private. "
+                       "Please use a public repository."
+            )
+        if "not found" in err:
+            raise HTTPException(
+                status_code=404,
+                detail="Repository not found. "
+                       "Please check the GitHub URL."
+            )
+        raise HTTPException(
+            status_code=400,
+            detail=safe_error(e, "GitHub")
+        )
+    except Exception as e:
+        logger.exception("Orchestration error:")
+        raise HTTPException(
+            status_code=502,
+            detail=safe_error(e, "Orchestration")
+        )
 
 
 @app.post("/api/export/markdown")
-async def export_markdown(payload: ExportRequest, http_request: Request):
+async def export_markdown(
+    payload: ExportRequest,
+    http_request: Request
+):
+    """Export repository analysis as markdown"""
     try:
-        from backend.bob_client import BobClient
-    except ImportError:
-        from bob_client import BobClient
-
-    try:
-        logger.info(f"Generating markdown export for {payload.github_url}")
+        logger.info(
+            f"Generating markdown export for "
+            f"{payload.github_url}"
+        )
+        
         config = get_request_config(http_request)
         ai_client = get_configured_client(config)
-
-        # Update config with determined client
-        config["client"] = ai_client
-
-        if using_mock(config, ai_client):
-            repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
-            markdown_content = f"# {repo_name} - Developer Onboarding Guide\n\nGenerated with RepoSense mock mode."
+        
+        if is_mock_mode(ai_client):
+            repo_name = (
+                payload.github_url.rstrip("/").split("/")[-1] or
+                "repository"
+            )
+            markdown_content = (
+                f"# {repo_name} - Developer Onboarding Guide\n\n"
+                f"Generated with RepoSense demo mode."
+            )
         else:
-            repo_context = await build_repo_context(payload.github_url, config["github_token"])
-            markdown_content = await call_ai(ai_client, "generate_doc", 45.0, repo_context)
+            repo_context = await build_repo_context(
+                payload.github_url,
+                config["github_token"]
+            )
+            markdown_content = await call_ai(
+                ai_client, "generate_doc", 120.0, repo_context
+            )
             repo_name = repo_context["repo_name"]
-
+        
         date_str = datetime.utcnow().strftime("%Y-%m-%d")
         filename = f"reposense-{repo_name}-{date_str}.md"
-
+        
         logger.info(f"Markdown export complete for {repo_name}")
-
+        
         return StreamingResponse(
             iter([markdown_content.encode("utf-8")]),
             media_type="text/markdown",
@@ -445,50 +517,43 @@ async def export_markdown(payload: ExportRequest, http_request: Request):
                 "Content-Disposition": f'attachment; filename="{filename}"'
             }
         )
-
-    except asyncio.TimeoutError as e:
-        logger.error(f"Export timeout for {payload.github_url}")
-        logger.warning("Falling back to MOCK MODE due to timeout.")
-        repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
-        markdown_content = f"# {repo_name} - Developer Onboarding Guide\n\nGenerated with RepoSense mock mode."
-        date_str = datetime.utcnow().strftime("%Y-%m-%d")
-        filename = f"reposense-{repo_name}-{date_str}.md"
-        return StreamingResponse(
-            iter([markdown_content.encode("utf-8")]),
-            media_type="text/markdown",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
+        
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=safe_error(
+                Exception("timeout"), "Export"
+            )
         )
     except GitHubParserError as e:
-        logger.error(f"GitHub parser error: {str(e)}")
-        if "private" in str(e).lower():
-            raise HTTPException(status_code=403, detail=safe_error(e, "Export"))
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=safe_error(e, "Export"))
-        raise HTTPException(status_code=400, detail=safe_error(e, "Export"))
-    except (BobAPIError, BobParseError, Exception) as e:
-        logger.exception("AI provider error:")
-        logger.warning("Falling back to MOCK MODE due to AI provider error.")
-        repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
-        markdown_content = f"# {repo_name} - Developer Onboarding Guide\n\nGenerated with RepoSense mock mode."
-        date_str = datetime.utcnow().strftime("%Y-%m-%d")
-        filename = f"reposense-{repo_name}-{date_str}.md"
-        return StreamingResponse(
-            iter([markdown_content.encode("utf-8")]),
-            media_type="text/markdown",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
+        err = str(e).lower()
+        if "private" in err:
+            raise HTTPException(
+                status_code=403,
+                detail="This repository is private. "
+                       "Please use a public repository."
+            )
+        if "not found" in err:
+            raise HTTPException(
+                status_code=404,
+                detail="Repository not found. "
+                       "Please check the GitHub URL."
+            )
+        raise HTTPException(
+            status_code=400,
+            detail=safe_error(e, "GitHub")
+        )
+    except Exception as e:
+        logger.exception("Export error:")
+        raise HTTPException(
+            status_code=502,
+            detail=safe_error(e, "Export")
         )
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "server:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000))
-    )
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 # Made with Bob
