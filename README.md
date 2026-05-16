@@ -29,6 +29,10 @@ RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repos
 > - **Architecture-as-Code**: Bob designed the multi-model fallback system (WatsonX + Groq) to ensure judges have a 100% uptime experience.
 > - **Impact**: By using Bob, we built a fully functional enterprise-grade tool in **hours**, which would typically take a senior team **weeks**. This is the ultimate "Idea to Impact" demonstration.
 
+## 🤖 IBM Bob Session Reports
+
+Bob IDE task session reports are available in [`bob_sessions/`](./bob_sessions/) as required by the hackathon submission guidelines.
+
 ## 📸 Screenshots
 
 ![Hero Page](docs/hero_page.png)
