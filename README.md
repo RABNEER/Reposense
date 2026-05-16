@@ -25,9 +25,18 @@ RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repos
 > *   **Architecture-as-Code**: Bob designed the multi-model fallback system to ensure a 100% uptime experience.
 > *   **Impact**: Built a fully functional enterprise-grade tool in **hours**, typically a **multi-week** effort for a senior team.
 
+---
+
+## 🚀 Core Impact
+
+*   **⚡ 14 Days → 2 Minutes**: Drastically reduce developer ramp-up time and cognitive load.
+*   **🛠️ PR Ready Day 1**: Generates context-aware code fixes for actual repository issues.
+*   **🧠 Deep Context Mastery**: Analyzes full repository architecture using all 4 IBM Bob modes.
+*   **🔒 Enterprise Security**: Zero data persistence and request-scoped authentication protocols.
+
 ## 📸 Interface Gallery
 
-| 📊 Deep Analysis | 🐚 Interactive BobShell | 💬 Contextual Q&A |
+| Deep Analysis | Interactive BobShell | Contextual Q&A |
 | :---: | :---: | :---: |
 | ![Results](docs/Results.png) | ![BobShell](docs/BobShell.png) | ![Ask Bob](docs/Ask.png) |
 
