@@ -1,53 +1,51 @@
+<div align="center">
+
 # RepoSense 🚀
+### **Turn idea into impact faster** — Understand any codebase in 2 minutes, not 2 weeks.
 
-**Turn idea into impact faster** — Understand any codebase in 2 minutes, not 2 weeks.
+[![Live Demo](https://img.shields.io/badge/Live-Demo-0062ff?style=for-the-badge&logo=vercel)](https://reposense-blond.vercel.app)
+[![IBM Bob](https://img.shields.io/badge/Built%20With-IBM%20Bob-05a677?style=for-the-badge)](https://github.com/IBM/bob)
+[![Watsonx](https://img.shields.io/badge/Powered%20By-IBM%20Watsonx-be95ff?style=for-the-badge)](https://www.ibm.com/watsonx)
+[![Hackathon](https://img.shields.io/badge/Event-IBM%20Bob%20Hackathon-red?style=for-the-badge)](https://ibm-bob.devpost.com/)
 
-RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repositories and generates comprehensive onboarding reports using **IBM Bob** powered by **IBM Watsonx Granite models**. Built exclusively for the **IBM Bob Hackathon**.
+RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repositories and generates comprehensive onboarding reports using **IBM Bob** powered by **IBM Watsonx Granite models**.
+
+</div>
+
+---
 
 ![Hero Page](docs/Hero.png)
 
+> [!IMPORTANT]
+> ### 🏆 **JUDGES' NOTE: 100% BOB-BUILT MVP**
+> This entire project—from the React frontend components to the FastAPI backend and complex AI orchestration logic—was **autonomously architected, written, and debugged by IBM Bob**.
+> 
+> *   **Zero Boilerplate**: Bob generated 40+ production-ready files from a single high-level goal.
+> *   **Self-Healing**: Bob identified and fixed his own network connectivity issues during development.
+> *   **Architecture-as-Code**: Bob designed the multi-model fallback system to ensure a 100% uptime experience.
+> *   **Impact**: Built a fully functional enterprise-grade tool in **hours**, typically a **multi-week** effort for a senior team.
+
+## 📸 Interface Gallery
+
+| 📊 Deep Analysis | 🐚 Interactive BobShell | 💬 Contextual Q&A |
+| :---: | :---: | :---: |
+| ![Results](docs/Results.png) | ![BobShell](docs/BobShell.png) | ![Ask Bob](docs/Ask.png) |
+
+---
 
 ## 🌐 Live Infrastructure
 
-| Service | Provider | URL |
-|---------|----------|-----|
-| Frontend | Vercel | [reposense-blond.vercel.app](https://reposense-blond.vercel.app) |
-| Backend API | Railway | [reposense-production-196a.up.railway.app](https://reposense-production-196a.up.railway.app) |
-| AI Engine | IBM Watsonx | Granite model |
-| Code Source | GitHub API | api.github.com |
+| Service | Provider | Status | URL |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | Vercel | ![Online](https://img.shields.io/badge/Online-05a677) | [reposense-blond.vercel.app](https://reposense-blond.vercel.app) |
+| **Backend API** | Railway | ![Online](https://img.shields.io/badge/Online-05a677) | [production-api](https://reposense-production-196a.up.railway.app) |
+| **AI Engine** | Watsonx | ![Granite Ready](https://img.shields.io/badge/Granite-be95ff) | [IBM Watsonx](https://www.ibm.com/watsonx) |
 
 > **🎉 PLUG & PLAY EXPERIENCE FOR JUDGES**
-> We value your time! The live deployment is pre-configured with our own IBM Watsonx and GitHub API keys. **You do not need to bring your own keys or configure any settings.** Simply open the app, paste a GitHub URL, and experience the magic instantly.
+> The live deployment is pre-configured with our IBM Watsonx and GitHub API keys. **No configuration required.** Simply paste a GitHub URL and experience the magic instantly.
 
-## 🎯 Hackathon Submission
+---
 
-**Event**: IBM Bob Hackathon
-**Theme**: Turn idea into impact faster
-**Live App**: https://reposense-blond.vercel.app
-**Team**: Ranveer Kumar — Team Apocalypto
-
-> [!IMPORTANT]
-> **JUDGES' NOTE: 100% BOB-BUILT MVP**
-> This entire project—from the React frontend components to the FastAPI backend and complex AI orchestration logic—was **autonomously architected, written, and debugged by IBM Bob**.
-> 
-> - **Zero Boilerplate**: Bob generated 40+ production-ready files from a single high-level goal.
-> - **Self-Healing**: Bob identified and fixed his own network connectivity and DNS issues during development.
-> - **Architecture-as-Code**: Bob designed the multi-model fallback system (WatsonX + Groq) to ensure judges have a 100% uptime experience.
-> - **Impact**: By using Bob, we built a fully functional enterprise-grade tool in **hours**, which would typically take a senior team **weeks**. This is the ultimate "Idea to Impact" demonstration.
-
-## 🤖 IBM Bob Session Reports
-
-Bob IDE task session reports are available in [`bob_sessions/`](./bob_sessions/) as required by the hackathon submission guidelines.
-
-## 📸 Screenshots
-
-````carousel
-![Results](docs/Results.png)
-<!-- slide -->
-![BobShell](docs/BobShell.png)
-<!-- slide -->
-![Ask Bob](docs/Ask.png)
-````
 
 ## 🎯 Problem We Solve
 
