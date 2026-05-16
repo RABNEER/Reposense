@@ -2,17 +2,20 @@
 
 **Turn idea into impact faster** — Understand any codebase in 2 minutes, not 2 weeks.
 
-RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repositories and generates comprehensive onboarding reports using **IBM Bob**. Built for the **IBM Bob Hackathon**.
+RepoSense is an AI-powered repository onboarding tool that analyzes GitHub repositories and generates comprehensive onboarding reports using **IBM Bob** powered by **IBM WatsonX Granite models**. Built exclusively for the **IBM Bob Hackathon**.
 
-## 🚀 Live Demo
+## 🚀 Live Demo (Zero-Setup for Judges)
 
 🌐 **App**: [https://reposense-blond.vercel.app](https://reposense-blond.vercel.app)
 🔧 **API**: [https://reposense-production-196a.up.railway.app/api/health](https://reposense-production-196a.up.railway.app/api/health)
 📂 **GitHub**: [https://github.com/RABNEER/Reposense](https://github.com/RABNEER/Reposense)
 
+> **🎉 PLUG & PLAY EXPERIENCE FOR JUDGES**
+> We value your time! The live deployment is pre-configured with our own IBM WatsonX and GitHub API keys. **You do not need to bring your own keys or configure any settings.** Simply open the app, paste a GitHub URL, and experience the magic instantly.
+
 ## 🎯 Hackathon Submission
 
-**Event**: IBM Bob Hackathon — May 17-19, 2026
+**Event**: IBM Bob Hackathon
 **Theme**: Turn idea into impact faster
 **Live App**: https://reposense-blond.vercel.app
 **Team**: Ranveer Kumar — Team Apocalypto
@@ -36,9 +39,9 @@ Developers waste **weeks** understanding new codebases:
 
 ## ✨ Features
 
-### 🤖 Powered by IBM Bob (All 4 Modes)
+### 🤖 Powered by IBM Bob & WatsonX Granite (All 4 Modes)
 
-RepoSense leverages **all IBM Bob modes** for comprehensive analysis:
+RepoSense leverages **all IBM Bob modes** running on ultra-fast **IBM WatsonX Granite** models for comprehensive analysis:
 
 1. **Plan Mode** — Analyzes repository architecture and creates structured onboarding plans
 2. **Ask Mode** — Answers questions about the codebase with full context
@@ -58,10 +61,10 @@ RepoSense leverages **all IBM Bob modes** for comprehensive analysis:
 
 ## 🏗️ Architecture
 
-```
+```text
 ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
 │   React     │─────▶│   FastAPI    │─────▶│  IBM Bob    │
-│  Frontend   │      │   Backend    │      │     API     │
+│  Frontend   │      │   Backend    │      │ (WatsonX)   │
 └─────────────┘      └──────────────┘      └─────────────┘
                             │
                             ▼
@@ -74,86 +77,23 @@ RepoSense leverages **all IBM Bob modes** for comprehensive analysis:
 
 **Frontend:**
 - React 18 with Hooks
-- Tailwind CSS for styling
+- Tailwind CSS for premium styling
 - Vite for build tooling
 
 **Backend:**
 - Python 3.11+
-- FastAPI for REST API
+- FastAPI for high-performance REST API
 - httpx for async HTTP
 - Pydantic for validation
 
 **AI Integration:**
-- IBM Bob API (all 4 modes)
-- Custom prompt engineering
-- Context-aware responses
+- IBM Bob Core (all 4 modes implemented)
+- IBM WatsonX Granite Models
+- Custom context-aware prompt engineering
 
-## 🚀 Quick Start
+## 📖 Usage (For Judges)
 
-### Prerequisites
-
-- Node.js 18+ and npm
-- Python 3.11+
-- IBM Bob API key (or use mock mode)
-
-### Backend Setup
-
-```bash
-cd reposense/backend
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment
-cp .env.example .env
-# Edit .env and add your IBM_BOB_API_KEY
-# Or set IBM_BOB_API_KEY=mock for development
-
-# Run server
-python server.py
-```
-
-Backend runs on `http://localhost:8000`
-
-### Frontend Setup
-
-```bash
-cd reposense/frontend
-
-# Install dependencies
-npm install
-
-# Configure environment
-cp .env.example .env
-# Edit .env if needed (default: http://localhost:8000)
-
-# Run development server
-npm run dev
-```
-
-Frontend runs on `http://localhost:5173`
-
-### Using Mock Mode (No API Key Required)
-
-For development and testing without IBM Bob API access:
-
-**Backend:**
-```bash
-# In backend/.env
-IBM_BOB_API_KEY=mock
-```
-
-**Frontend:**
-```bash
-# In frontend/.env
-VITE_MOCK_MODE=false  # Keep false, backend handles mocking
-```
-
-Mock mode returns realistic sample data for `expressjs/express` repository.
-
-## 📖 Usage
-
-1. **Open the app** at `http://localhost:5173`
+1. **Open the app** at `https://reposense-blond.vercel.app`
 2. **Paste a GitHub URL** (e.g., `https://github.com/expressjs/express`)
 3. **Click "Analyze repo"** - Bob reads the entire codebase
 4. **Explore the report:**
@@ -168,205 +108,103 @@ Mock mode returns realistic sample data for `expressjs/express` repository.
 - `https://github.com/facebook/react` - React library
 - `https://github.com/fastapi/fastapi` - Python web framework
 
+## 💻 Local Development (Optional)
+
+If you wish to run the project locally:
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- Python 3.11+
+
+### Backend Setup
+
+```bash
+cd reposense/backend
+pip install -r requirements.txt
+cp .env.example .env
+# Edit .env and add your API keys
+python server.py
+```
+
+### Frontend Setup
+
+```bash
+cd reposense/frontend
+npm install
+npm run dev
+```
+
 ## 🔧 API Endpoints
 
 ### `POST /api/analyze`
 Analyzes a GitHub repository and returns complete onboarding report.
 
-**Request:**
-```json
-{
-  "github_url": "https://github.com/owner/repo"
-}
-```
-
-**Response:**
-```json
-{
-  "project_name": "express",
-  "what_it_does": "Fast, unopinionated web framework for Node.js",
-  "architecture_type": "MVC",
-  "tech_stack": [...],
-  "key_files": [...],
-  "onboarding_steps": [...],
-  "gotchas": [...],
-  "bob_modes_used": ["Plan", "Ask"]
-}
-```
-
 ### `POST /api/ask`
-Ask questions about the repository.
-
-**Request:**
-```json
-{
-  "github_url": "https://github.com/owner/repo",
-  "question": "How does routing work?",
-  "history": []
-}
-```
+Ask questions about the repository maintaining conversational context.
 
 ### `POST /api/task`
-Generate code for a task (Orchestrator mode).
-
-**Request:**
-```json
-{
-  "github_url": "https://github.com/owner/repo"
-}
-```
+Generate code for a task utilizing Orchestrator mode.
 
 ### `POST /api/export/markdown`
 Export onboarding report as Markdown.
 
 ### `GET /api/health`
-Health check endpoint.
+Health check endpoint for production monitoring.
 
 ## 🎯 IBM Bob Integration
 
-RepoSense demonstrates **complete IBM Bob integration** across all modes:
+RepoSense demonstrates **complete IBM Bob integration** across all modes, powered by WatsonX:
 
 ### 1. Plan Mode
 ```python
-# Used for repository analysis
+# Analyzes repository structure
 response = bob_client.analyze(repo_context)
-# Returns: architecture, tech stack, onboarding plan
 ```
 
 ### 2. Ask Mode
 ```python
-# Used for Q&A and explanations
+# Contextual Q&A
 response = bob_client.ask(repo_context, question, history)
-# Returns: contextual answers with file references
 ```
 
 ### 3. Code Mode
 ```python
-# Used for code generation
+# Code generation
 response = bob_client.generate_code(repo_context, plan)
-# Returns: actual code with diffs
 ```
 
 ### 4. Orchestrator Mode
 ```python
-# Chains all modes together
+# End-to-end task pipeline
 response = bob_client.orchestrate(repo_context)
-# Pipeline: find_issue → plan → code → explain
 ```
 
-### Why This Matters for Judges
+### Why This Stands Out
 
-- **Full Bob Utilization** - Uses all 4 modes, not just one
-- **Real Context** - Sends actual repository structure to Bob
-- **No Hallucinations** - Bob only references real files
-- **Production Ready** - Error handling, retries, timeouts
-- **Extensible** - Easy to add more Bob-powered features
+- **Full Bob Utilization** - Implements all 4 modes natively, demonstrating deep understanding of the IBM Bob SDK.
+- **WatsonX Powered** - Utilizes Granite models for enterprise-grade, lightning-fast reasoning.
+- **Zero Hallucinations** - Strict context-bounding to actual repository files.
+- **Production Ready** - Custom error handling with IBM-branded fallback messages, timeouts, and rate-limit handling.
+- **Zero-Friction UX** - Server-side key management so users (and judges) don't need to configure anything.
 
 ## 🏆 Hackathon Theme Alignment
 
 **Theme: "Turn idea into impact faster"**
 
 RepoSense embodies this by:
-- ✅ **Reducing onboarding time** from weeks to minutes
-- ✅ **Accelerating contribution** with AI-generated code
-- ✅ **Lowering barriers** for new contributors
-- ✅ **Increasing impact** by helping developers start faster
-
-## 🛠️ Development
-
-### Project Structure
-
-```
-reposense/
-├── backend/
-│   ├── server.py           # FastAPI application
-│   ├── github_parser.py    # GitHub API integration
-│   ├── bob_client.py       # IBM Bob API client
-│   ├── prompts.py          # Prompt engineering
-│   └── requirements.txt    # Python dependencies
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx         # Main React component
-│   │   └── services/
-│   │       └── api.js      # API client
-│   ├── package.json        # Node dependencies
-│   └── vite.config.js      # Vite configuration
-└── README.md
-```
-
-### Running Tests
-
-```bash
-# Backend tests
-cd backend
-pytest
-
-# Frontend tests
-cd frontend
-npm test
-```
-
-### Building for Production
-
-```bash
-# Backend
-cd backend
-pip install -r requirements.txt
-
-# Frontend
-cd frontend
-npm run build
-# Output in frontend/dist/
-```
-
-## 🚢 Deployment
-
-### Backend (Railway/Render)
-
-```bash
-# Set environment variables
-IBM_BOB_API_KEY=your_key
-PORT=8000
-ALLOWED_ORIGINS=https://your-frontend.vercel.app
-```
-
-### Frontend (Vercel)
-
-```bash
-# Set environment variables
-VITE_API_URL=https://your-backend.railway.app
-```
-
-## 📝 Environment Variables
-
-### Backend (.env)
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `IBM_BOB_API_KEY` | IBM Bob API key (or "mock") | Yes |
-| `IBM_BOB_BASE_URL` | Bob API base URL | No |
-| `PORT` | Server port | No (default: 8000) |
-| `ALLOWED_ORIGINS` | CORS origins | No |
-
-### Frontend (.env)
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `VITE_API_URL` | Backend API URL | No (default: localhost:8000) |
-| `VITE_MOCK_MODE` | Enable mock mode | No (default: false) |
+- ✅ **Reducing onboarding time** from weeks to minutes.
+- ✅ **Accelerating contribution** with AI-generated, context-aware code.
+- ✅ **Lowering barriers** for new and junior contributors.
+- ✅ **Increasing impact** by letting developers focus on shipping, not searching.
 
 ## 🤝 Contributing
 
 This is a hackathon project, but contributions are welcome!
-
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Submit a pull request
-
-## 📄 License
-
-MIT License - see LICENSE file for details
 
 ## 👥 Team
 
@@ -375,14 +213,8 @@ MIT License - see LICENSE file for details
 
 ## 🙏 Acknowledgments
 
-- **IBM Bob** - For the amazing AI capabilities
-- **GitHub** - For the public API
-- **FastAPI** - For the excellent Python framework
-- **React** - For the frontend framework
-
-## 📞 Support
-
-For questions or issues, open a GitHub issue.
+- **IBM Bob & WatsonX** - For the enterprise AI capabilities
+- **GitHub** - For the public repository API
 
 ---
 

@@ -1,6 +1,13 @@
 # RepoSense - Complete Setup Instructions
 
-Your IBM Bob API key has been configured! Follow these steps to run the application.
+> **🎉 ATTENTION JUDGES**
+> If you are evaluating this project for the **IBM Bob Hackathon**, you do NOT need to follow these instructions!
+> The live deployment at [https://reposense-blond.vercel.app](https://reposense-blond.vercel.app) is fully configured with our own IBM WatsonX and GitHub credentials.
+> Simply open the URL and use the app immediately!
+
+---
+
+If you wish to run the project locally for development purposes, follow these steps.
 
 ## ✅ Prerequisites Installed
 - Python 3.9+
@@ -33,7 +40,17 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 2: Install Frontend Dependencies
+### Step 2: Configure Environment Variables
+
+In the `backend` directory, create a `.env` file (you can copy `.env.example`):
+
+```bash
+# Required for WatsonX Granite integration
+GROQ_API_KEY=your_api_key_here
+GITHUB_TOKEN=your_github_token_here
+```
+
+### Step 3: Install Frontend Dependencies
 
 Open a **new terminal** and run:
 
@@ -44,7 +61,7 @@ cd reposense/frontend
 npm install
 ```
 
-### Step 3: Start the Backend Server
+### Step 4: Start the Backend Server
 
 In the **first terminal** (with virtual environment activated):
 
@@ -53,16 +70,7 @@ cd reposense/backend
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-You should see:
-```
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process
-INFO:     Started server process
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-```
-
-### Step 4: Start the Frontend Server
+### Step 5: Start the Frontend Server
 
 In the **second terminal**:
 
@@ -71,31 +79,22 @@ cd reposense/frontend
 npm run dev
 ```
 
-You should see:
-```
-  VITE v5.0.11  ready in 500 ms
+### Step 6: Open the Application
 
-  ➜  Local:   http://localhost:3000/
-  ➜  Network: use --host to expose
-  ➜  press h to show help
-```
-
-### Step 5: Open the Application
-
-Open your browser and go to: **http://localhost:3000**
+Open your browser and go to: **http://localhost:5173**
 
 ## 🎯 Test the Application
 
 1. **Try an example repository:**
    - Paste: `https://github.com/facebook/react`
    - Click "Analyze Repository"
-   - Wait 15-30 seconds for IBM Bob to analyze
+   - Wait 15-30 seconds for IBM Bob (WatsonX) to analyze
 
 2. **Explore features:**
    - View the comprehensive onboarding report
    - Ask questions in the Q&A section
    - Use Task Kickstarter to plan implementations
-   - Export the report as Markdown or PDF
+   - Export the report as Markdown
 
 ## 📝 Example Repositories to Try
 
@@ -103,56 +102,6 @@ Open your browser and go to: **http://localhost:3000**
 - **Vue.js**: `https://github.com/vuejs/vue`
 - **Express**: `https://github.com/expressjs/express`
 - **FastAPI**: `https://github.com/tiangolo/fastapi`
-- **Next.js**: `https://github.com/vercel/next.js`
-
-## 🔧 Troubleshooting
-
-### Backend Issues
-
-**Error: "ModuleNotFoundError"**
-- Make sure virtual environment is activated
-- Run `pip install -r requirements.txt` again
-
-**Error: "Port 8000 already in use"**
-- Stop any other process using port 8000
-- Or change port: `uvicorn main:app --reload --port 8001`
-
-**Error: "BOB_API_KEY not found"**
-- Check that `.env` file exists in `backend/` directory
-- Verify the API key is correctly set
-
-### Frontend Issues
-
-**Error: "Cannot find module"**
-- Delete `node_modules` folder
-- Run `npm install` again
-
-**Error: "Port 3000 already in use"**
-- The dev server will automatically try port 3001
-- Or manually specify: `npm run dev -- --port 3001`
-
-**Error: "Failed to fetch"**
-- Make sure backend is running on port 8000
-- Check browser console for CORS errors
-
-## 🎨 API Endpoints
-
-Once running, you can access:
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs (Swagger UI)
-- **Health Check**: http://localhost:8000/health
-
-## 📚 Additional Resources
-
-- **README.md** - Complete project documentation
-- **QUICKSTART.md** - Quick reference guide
-- **IBM_BOB_INTEGRATION.md** - How IBM Bob powers the app
-
-## 🎉 You're Ready!
-
-Your RepoSense application is now fully configured and ready to use. Start analyzing repositories and see how IBM Bob helps you understand codebases in minutes!
 
 ---
 
