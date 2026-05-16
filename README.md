@@ -1,8 +1,8 @@
 <div align="center">
 
 # 🚀 RepoSense
-### **Accelerate Codebase Mastery**
-*Understand any repository in 2 minutes, not 2 weeks.*
+### **The Senior Architect in a Box**
+*Understand any repository in 2 minutes, not 2 weeks. The first Autonomous Onboarding Engine built on IBM Bob.*
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-0062ff?style=for-the-badge&logo=vercel)](https://reposense-blond.vercel.app)
 [![IBM Bob](https://img.shields.io/badge/Built%20With-IBM%20Bob-05a677?style=for-the-badge)](https://github.com/IBM/bob)
@@ -19,7 +19,7 @@
 
 ---
 
-**RepoSense** is an enterprise-grade repository onboarding tool. By leveraging the full power of **IBM Bob** orchestration and **IBM Watsonx Granite** models, it transforms complex codebases into actionable insights instantly.
+**RepoSense** isn't just a repository analyzer—it's an **Autonomous Onboarding Engine**. While traditional tools give you a "summary," RepoSense uses **IBM Bob Orchestration** to reconstruct the mental model of a codebase, mapping architectural intent and generating your first contribution instantly.
 
 [**Explore Live**](https://reposense-blond.vercel.app) | [**Read Judges' Note**](#-judges-note-100-bob-built-mvp) | [**Watch Demo**](https://reposense-blond.vercel.app)
 
@@ -476,6 +476,14 @@ RepoSense embodies this by:
 - ✅ Rate limit handling with IBM-branded messages
 - ✅ Concurrent request handling
 - ✅ Graceful error fallbacks
+
+---
+
+## 🤖 IBM Bob Session Reports
+
+Bob IDE task session reports are available in
+[`bob_sessions/`](./bob_sessions/) as required
+by the hackathon submission guidelines.
 
 ---
 
