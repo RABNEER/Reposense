@@ -70,16 +70,54 @@ RepoSense leverages **all IBM Bob modes** running on ultra-fast **IBM Watsonx Gr
 
 ## 🏗️ Architecture
 
+```mermaid
+graph TD
+    User([User]) -->|Interacts| UI[React 18 Frontend]
+    UI -->|API Requests| API[FastAPI Backend]
+    
+    subgraph "IBM Bob Core"
+        API -->|Context| Plan[Plan Mode]
+        API -->|Context + Q| Ask[Ask Mode]
+        API -->|Task| Code[Code Mode]
+        API -->|Goal| Orch[Orchestrator Mode]
+    end
+    
+    Plan & Ask & Code & Orch <-->|Powered by| WX[IBM Watsonx Granite]
+    API <-->|Fetches Code| GH[GitHub API]
+    
+    style User fill:#f9f,stroke:#333,stroke-width:2px
+    style UI fill:#0062ff,color:#fff
+    style API fill:#05a677,color:#fff
+    style WX fill:#be95ff,color:#000
+```
+
+## 📂 Project Structure
+
 ```text
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│   React     │─────▶│   FastAPI    │─────▶│  IBM Bob    │
-│  Frontend   │      │   Backend    │      │ (Watsonx)   │
-└─────────────┘      └──────────────┘      └─────────────┘
-                            │
-                            ▼
-                     ┌──────────────┐
-                     │  GitHub API  │
-                     └──────────────┘
+reposense/
+├── backend/                # FastAPI High-Performance Backend
+│   ├── models/             # Pydantic data models for request/response
+│   ├── routers/            # API endpoints (analyze, ask, task, export)
+│   ├── services/           # Core logic (Bob Client, GitHub Parser)
+│   ├── tests/              # Pytest suite for API reliability
+│   ├── bob_client.py       # IBM Bob SDK integration (Plan, Ask, Code, Orchestrator)
+│   ├── github_parser.py    # Recursive repository context analyzer
+│   ├── main.py             # FastAPI entry point
+│   ├── server.py           # Production server configuration
+│   └── requirements.txt    # Backend dependencies
+├── frontend/               # React 18 Premium UI
+│   ├── src/
+│   │   ├── components/     # High-fidelity UI components
+│   │   ├── services/       # API integration layer
+│   │   ├── App.jsx         # Main application logic & state
+│   │   └── index.css       # Tailwind & custom glassmorphism styles
+│   ├── package.json        # Frontend dependencies
+│   └── vite.config.js      # Build configuration
+├── docs/                   # Visual assets and screenshots
+├── .github/                # CI/CD workflows (GitHub Actions)
+├── README.md               # Main project documentation
+├── JUDGES_SUMMARY_BOB_IMPACT.md # Detailed Bob autonomous role report
+└── SETUP_INSTRUCTIONS.md   # Local development guide
 ```
 
 ### Tech Stack
