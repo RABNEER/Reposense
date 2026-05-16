@@ -728,6 +728,12 @@ const App = () => {
         <div className="hidden md:block label border border-[var(--border)] px-[14px] py-[6px] leading-none text-[10px] text-[var(--ink)] font-medium">
           Model: {activeModel}
         </div>
+        <button 
+          onClick={() => setSettingsOpen(true)}
+          className="settings-button label border border-[var(--border)] px-[14px] py-[6px] leading-none text-[10px] text-[var(--ink)] font-medium transition-base ml-2"
+        >
+          Settings
+        </button>
       </div>
     </nav>
   );
@@ -1624,3 +1630,5 @@ const App = () => {
 };
 
 export default App;
+
+// Made with Bob

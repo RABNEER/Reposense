@@ -32,10 +32,6 @@ except ImportError:
         get_mock_analyze_response, get_mock_orchestrate_response, get_mock_ask_response
     )
 
-try:
-    from backend.openrouter_client import OpenRouterClient
-except ImportError:
-    from openrouter_client import OpenRouterClient
 
 try:
     from backend.bob_client import BobClient
@@ -53,7 +49,6 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
 
     api_key = os.getenv("IBM_BOB_API_KEY", "")
-    openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
     groq_key = os.getenv("WATSONX_API_KEY") or os.getenv("GROQ_API_KEY", "")
     github_token = os.getenv("GITHUB_TOKEN")
     port = os.getenv("PORT", "8000")
@@ -62,10 +57,7 @@ async def lifespan(app: FastAPI):
         logger.info("IBM Bob API key configured")
     if groq_key:
         logger.info("IBM Watsonx configured — Granite model ready")
-    if openrouter_key:
-        logger.info("OpenRouter API key configured")
-    
-    if not api_key and not openrouter_key and not groq_key:
+    if not api_key and not groq_key:
         logger.warning("MOCK MODE ENABLED - Using simulated AI responses")
 
     if github_token:
@@ -99,7 +91,6 @@ app.add_middleware(
         "*",
         "Content-Type",
         "Authorization",
-        "X-OpenRouter-Key",
         "X-IBM-Bob-Key",
         "X-IBM-Bob-Base-Url",
         "X-AI-Provider",
@@ -221,7 +212,6 @@ def get_request_config(http_request: Request) -> dict:
         "bob_key": watsonx_key,
         "bob_base_url": watsonx_url,
         "watsonx_project_id": watsonx_project_id,
-        "openrouter_key": headers.get("X-OpenRouter-Key") or os.getenv("OPENROUTER_API_KEY", ""),
         "groq_key": (headers.get("X-Groq-Key") or
                      os.getenv("WATSONX_API_KEY") or
                      os.getenv("GROQ_API_KEY", "")),
@@ -233,18 +223,12 @@ def get_request_config(http_request: Request) -> dict:
 
 def get_configured_client(config: dict):
     try:
-        from backend.openrouter_client import OpenRouterClient
-    except ImportError:
-        from openrouter_client import OpenRouterClient
-
-    try:
         from backend.bob_client import BobClient
     except ImportError:
         from bob_client import BobClient
 
     return get_ai_client(
         bob_key=config["bob_key"],
-        openrouter_key=config["openrouter_key"],
         groq_key=config["groq_key"],
         provider=config["provider"],
         mock_mode=config["mock"],
@@ -280,23 +264,16 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/api/health")
 async def health_check():
     try:
-        from backend.openrouter_client import OpenRouterClient
-    except ImportError:
-        from openrouter_client import OpenRouterClient
-
-    try:
         from backend.bob_client import BobClient
     except ImportError:
         from bob_client import BobClient
 
     api_key = os.getenv("IBM_BOB_API_KEY", "")
-    openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
     groq_key = os.getenv("WATSONX_API_KEY") or os.getenv("GROQ_API_KEY", "")
     return {
         "status": "ok",
         "version": "1.0.0",
         "bob_connected": bool(api_key and api_key != ""),
-        "openrouter_connected": bool(openrouter_key),
         "watsonx_connected": bool(groq_key),
         "mock_mode": MOCK_MODE,
         "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -305,11 +282,6 @@ async def health_check():
 
 @app.post("/api/analyze")
 async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
-    try:
-        from backend.openrouter_client import OpenRouterClient
-    except ImportError:
-        from openrouter_client import OpenRouterClient
-
     try:
         from backend.bob_client import BobClient
     except ImportError:
@@ -355,11 +327,6 @@ async def analyze_repository(payload: AnalyzeRequest, http_request: Request):
 @app.post("/api/ask")
 async def ask_question(payload: AskRequest, http_request: Request):
     try:
-        from backend.openrouter_client import OpenRouterClient
-    except ImportError:
-        from openrouter_client import OpenRouterClient
-
-    try:
         from backend.bob_client import BobClient
     except ImportError:
         from bob_client import BobClient
@@ -401,11 +368,6 @@ async def ask_question(payload: AskRequest, http_request: Request):
 
 @app.post("/api/task")
 async def kickstart_task(payload: TaskRequest, http_request: Request):
-    try:
-        from backend.openrouter_client import OpenRouterClient
-    except ImportError:
-        from openrouter_client import OpenRouterClient
-
     try:
         from backend.bob_client import BobClient
     except ImportError:
@@ -450,11 +412,6 @@ async def kickstart_task(payload: TaskRequest, http_request: Request):
 
 @app.post("/api/export/markdown")
 async def export_markdown(payload: ExportRequest, http_request: Request):
-    try:
-        from backend.openrouter_client import OpenRouterClient
-    except ImportError:
-        from openrouter_client import OpenRouterClient
-
     try:
         from backend.bob_client import BobClient
     except ImportError:
