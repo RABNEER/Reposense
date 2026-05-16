@@ -35,10 +35,10 @@ Bob IDE task session reports are available in [`bob_sessions/`](./bob_sessions/)
 
 ## 📸 Screenshots
 
-![Hero Page](docs/hero_page.png)
-![Loading](docs/loading_state.png)
-![Results](docs/results_page.png)
-![BobShell](docs/bobshell_terminal.png)
+![Hero Page](docs/Hero.png)
+![Results](docs/Results.png)
+![BobShell](docs/BobShell.png)
+![Ask Bob](docs/Ask.png)
 
 ## 🎯 Problem We Solve
 
