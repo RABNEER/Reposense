@@ -388,7 +388,12 @@ const App = () => {
 
     try {
       const response = await askQuestion(repoUrl, question, newMessages);
-      setChatMessages([...newMessages, { role: 'bob', content: response.answer }]);
+      setChatMessages([...newMessages, {
+        role: 'bob',
+        content: response.answer,
+        code_snippets: response.code_snippets || [],
+        files_referenced: response.files_referenced || []
+      }]);
     } catch (err) {
       setChatMessages([...newMessages, { role: 'bob', content: 'Encountered an error. Please try again.' }]);
     } finally {
@@ -1459,6 +1464,82 @@ const App = () => {
                               return <span key={pi}>{part}</span>;
                             });
                           })()}
+
+                          {/* Code Snippets */}
+                          {m.code_snippets && m.code_snippets.length > 0 && (
+                            <div style={{ marginTop: '12px' }}>
+                              {m.code_snippets.map((snippet, si) => (
+                                <div key={si} style={{ marginTop: si > 0 ? '10px' : '0' }}>
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    background: '#1a1a1a',
+                                    padding: '6px 12px',
+                                    borderTop: '1px solid #333'
+                                  }}>
+                                    <span style={{
+                                      fontFamily: 'Geist Mono, monospace',
+                                      fontSize: '9px',
+                                      letterSpacing: '0.1em',
+                                      textTransform: 'uppercase',
+                                      color: '#c9a84c'
+                                    }}>
+                                      {snippet.file}
+                                      {snippet.line_start ? ` · L${snippet.line_start}–${snippet.line_end}` : ''}
+                                    </span>
+                                    {snippet.explanation && (
+                                      <span style={{
+                                        fontFamily: 'Geist Mono, monospace',
+                                        fontSize: '8px',
+                                        color: '#666',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.08em'
+                                      }}>{snippet.explanation}</span>
+                                    )}
+                                  </div>
+                                  <pre style={{
+                                    background: '#0a0a0a',
+                                    color: '#22c98a',
+                                    padding: '12px 16px',
+                                    fontFamily: 'DM Mono, Geist Mono, monospace',
+                                    fontSize: '11px',
+                                    lineHeight: '1.7',
+                                    overflowX: 'auto',
+                                    margin: 0,
+                                    borderBottom: '1px solid #333',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word'
+                                  }}>
+                                    {snippet.code}
+                                  </pre>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Files Referenced */}
+                          {m.files_referenced && m.files_referenced.length > 0 && (
+                            <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                              <span style={{
+                                fontFamily: 'Geist Mono, monospace',
+                                fontSize: '8px',
+                                letterSpacing: '0.15em',
+                                textTransform: 'uppercase',
+                                color: 'var(--dim)'
+                              }}>Files:</span>
+                              {m.files_referenced.map((f, fi) => (
+                                <span key={fi} style={{
+                                  fontFamily: 'Geist Mono, monospace',
+                                  fontSize: '9px',
+                                  color: 'var(--rust)',
+                                  background: 'var(--paper)',
+                                  border: '1px solid var(--border)',
+                                  padding: '2px 8px'
+                                }}>{f}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
