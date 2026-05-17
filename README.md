@@ -117,9 +117,25 @@ Developers waste **weeks** understanding new codebases:
 | First contribution | Week 2-3 | Day 1 |
 | Developer confidence | Low | High |
 
-**TAM**: $50B+ developer productivity market
-**Pricing**: $15/developer/month
-**ROI**: Day 1 for any engineering team
+### 🌐 Market Opportunity & Scope
+
+RepoSense sits at the intersection of AI-assisted engineering and enterprise knowledge management — a friction point costing companies billions annually in wasted onboarding time.
+
+| Segment | Size | Who We Target |
+| :--- | :---: | :--- |
+| **TAM** — Total Addressable Market | **$50.2B** | Global developer productivity, tooling, and engineering onboarding market |
+| **SAM** — Serviceable Addressable Market | **$12.4B** | Enterprises using cloud-native CI/CD, AI code assistance, and orchestration platforms |
+| **SOM** — Serviceable Obtainable Market | **$1.8B** | Mid-to-large engineering teams migrating to private LLMs like IBM Watsonx Granite |
+
+### 💰 Revenue Streams
+
+| Tier | Price | Description |
+| :--- | :---: | :--- |
+| **SaaS Standard** | $15 / dev / month | Hosted cloud, GitHub integration, full Bob pipeline |
+| **Enterprise Custom** | $45 / dev / month | Self-hosted on private Watsonx, custom security adapters, SSO |
+| **Professional Services** | Custom quote | Onboarding consulting, custom KB training, SLA support |
+
+**ROI**: Day 1 for any engineering team — every hire recovers cost in their first week.
 
 ---
 
@@ -486,6 +502,39 @@ RepoSense embodies this by:
 - ✅ **Accelerating contribution** with AI-generated, context-aware code.
 - ✅ **Lowering barriers** for new and junior contributors.
 - ✅ **Increasing impact** by letting developers focus on shipping, not searching.
+
+---
+
+## 🗺️ Future Prospects & Scalability Roadmap
+
+RepoSense is architected for enterprise-scale expansion — from hackathon MVP to a full corporate developer platform.
+
+```mermaid
+gantt
+    title RepoSense Development Roadmap
+    dateFormat  YYYY-MM
+    section Phase 1 — Core
+    Enterprise Context Isolation     :active, p1, 2026-06, 2M
+    Vector Cache Layer (Redis)       :p1b, 2026-07, 1M
+    section Phase 2 — Security
+    IBM Watsonx Compliance Vault     :p2, 2026-08, 3M
+    Auto-Lifting Security Policies   :p2b, 2026-10, 1M
+    section Phase 3 — Scale
+    VS Code & JetBrains Plugin Suite :p3, 2026-11, 4M
+    Multi-org Collaboration Layer    :p3b, 2027-01, 3M
+```
+
+#### 📍 Phase 1 — Context Isolation (Next 60 Days)
+- **Vector Cache Layer**: Redis-based context caching to support repos with 10,000+ files without latency penalties.
+- **Branch-Level Diff Analysis**: Analyze multi-branch PR states so engineers onboard to *active* workstreams, not just `main`.
+
+#### 🔐 Phase 2 — Enterprise Compliance Vault (Next 120 Days)
+- **Watsonx Sovereign Cloud**: Fully isolate source code inside private IBM instances — zero public data exposure.
+- **Policy-Aware Onboarding**: Bob reads internal security policies and flags risky additions directly in the onboarding checklist.
+
+#### 🔌 Phase 3 — Unified IDE Suite (Next 270 Days)
+- **VS Code & JetBrains Extensions**: BobShell embedded directly in the developer's local IDE, syncing workspace rules in real-time.
+- **Multi-org Collaboration**: Shared knowledge bases across teams, enabling institutional code memory at enterprise scale.
 
 ---
 
