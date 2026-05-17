@@ -220,44 +220,107 @@ def is_mock_mode(client) -> bool:
 
 
 async def call_ai(client, method_name: str, timeout: float, *args):
-    """Call AI client method with timeout and dynamic fallback if it fails"""
-    if client is not None:
-        try:
-            logger.info(f"Calling primary AI provider {type(client).__name__} for '{method_name}'...")
-            method = getattr(client, method_name)
-            if asyncio.iscoroutinefunction(method):
-                return await asyncio.wait_for(method(*args), timeout=timeout)
-            return await asyncio.wait_for(asyncio.to_thread(method, *args), timeout=timeout)
-        except Exception as e:
-            logger.warning(
-                f"Primary AI client {type(client).__name__} failed during '{method_name}' call: {e}. "
-                f"Attempting silent fallback to secondary client..."
-            )
-    else:
-        logger.info("Primary AI client is None (mock/demo mode). Falling back to mock data.")
+    """
+    Call AI with race condition: Watsonx and Groq compete, fastest wins!
+    If Watsonx responds in <5s, use it. Otherwise, Groq takes over.
+    """
+    if client is None:
+        logger.info("No AI client configured (mock mode)")
         raise FallbackToMockError("No active AI client configured")
-
-    # Fallback to Groq if the failing client was Watsonx
+    
+    # Check if both providers are available for racing
     groq_key = os.getenv("GROQ_API_KEY", "")
-    if is_valid_key(groq_key) and type(client).__name__ == "WatsonxClient":
+    has_groq = is_valid_key(groq_key)
+    is_watsonx = type(client).__name__ == "WatsonxClient"
+    
+    # If Watsonx is primary and Groq is available, race them!
+    if is_watsonx and has_groq:
         try:
             try:
                 from backend.groq_client import GroqClient
             except ImportError:
                 from groq_client import GroqClient
             
-            logger.info("Initializing fallback GroqClient...")
-            fallback_client = GroqClient(api_key=groq_key)
-            method = getattr(fallback_client, method_name)
+            # Create both clients
+            groq_client = GroqClient(api_key=groq_key)
             
-            logger.info(f"Calling fallback AI provider (GroqClient) for '{method_name}'...")
-            if asyncio.iscoroutinefunction(method):
-                return await asyncio.wait_for(method(*args), timeout=timeout)
-            return await asyncio.wait_for(asyncio.to_thread(method, *args), timeout=timeout)
-        except Exception as fallback_err:
-            logger.error(f"Fallback Groq client failed: {fallback_err}. Falling back to mock data.")
+            # Get methods from both clients
+            watsonx_method = getattr(client, method_name)
+            groq_method = getattr(groq_client, method_name)
+            
+            # Create tasks for both
+            async def call_watsonx():
+                try:
+                    if asyncio.iscoroutinefunction(watsonx_method):
+                        result = await asyncio.wait_for(watsonx_method(*args), timeout=5.0)
+                    else:
+                        result = await asyncio.wait_for(asyncio.to_thread(watsonx_method, *args), timeout=5.0)
+                    return ("watsonx", result)
+                except asyncio.TimeoutError:
+                    return ("watsonx", None)  # Took too long
+                except Exception as e:
+                    logger.warning(f"Watsonx failed: {e}")
+                    return ("watsonx", None)
+            
+            async def call_groq():
+                try:
+                    # Give Watsonx a 0.5s head start
+                    await asyncio.sleep(0.5)
+                    if asyncio.iscoroutinefunction(groq_method):
+                        result = await asyncio.wait_for(groq_method(*args), timeout=timeout)
+                    else:
+                        result = await asyncio.wait_for(asyncio.to_thread(groq_method, *args), timeout=timeout)
+                    return ("groq", result)
+                except Exception as e:
+                    logger.warning(f"Groq failed: {e}")
+                    return ("groq", None)
+            
+            # Race both providers
+            logger.info(f"Racing Watsonx vs Groq for '{method_name}'...")
+            tasks = [call_watsonx(), call_groq()]
+            
+            # Wait for first successful result
+            for coro in asyncio.as_completed(tasks):
+                provider, result = await coro
+                if result is not None:
+                    logger.info(f"✓ {provider.capitalize()} won the race for '{method_name}'!")
+                    return result
+            
+            # Both failed
+            raise Exception("Both Watsonx and Groq failed")
+            
+        except Exception as e:
+            logger.error(f"Race condition failed: {e}")
+            raise FallbackToMockError(f"All AI attempts failed for '{method_name}'")
     
-    raise FallbackToMockError(f"All AI attempts failed for '{method_name}' call.")
+    # Standard single-provider call (no racing)
+    try:
+        logger.info(f"Calling AI provider {type(client).__name__} for '{method_name}'...")
+        method = getattr(client, method_name)
+        if asyncio.iscoroutinefunction(method):
+            return await asyncio.wait_for(method(*args), timeout=timeout)
+        return await asyncio.wait_for(asyncio.to_thread(method, *args), timeout=timeout)
+    except Exception as e:
+        logger.warning(f"AI provider failed: {e}")
+        
+        # Try Groq as fallback if available
+        if has_groq and not is_watsonx:
+            try:
+                try:
+                    from backend.groq_client import GroqClient
+                except ImportError:
+                    from groq_client import GroqClient
+                
+                fallback_client = GroqClient(api_key=groq_key)
+                method = getattr(fallback_client, method_name)
+                
+                if asyncio.iscoroutinefunction(method):
+                    return await asyncio.wait_for(method(*args), timeout=timeout)
+                return await asyncio.wait_for(asyncio.to_thread(method, *args), timeout=timeout)
+            except Exception as fallback_err:
+                logger.error(f"Fallback failed: {fallback_err}")
+        
+        raise FallbackToMockError(f"All AI attempts failed for '{method_name}'")
 
 
 @app.exception_handler(Exception)
