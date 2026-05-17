@@ -454,6 +454,28 @@ Complete onboarding report in ~9 seconds
 
 ---
 
+## 🤔 Why Not Just Use ChatGPT or GitHub Copilot?
+
+This is the right question. Here's the honest answer:
+
+| Capability | ChatGPT / Copilot | RepoSense |
+|:---|:---|:---|
+| **Context Source** | Your clipboard — you paste what you think matters | Reads the **entire repository autonomously** — 300+ files, full tree |
+| **Hallucination Risk** | High — fabricates file names, functions, and patterns that don't exist | Zero — every answer is grounded strictly in actual repository files fetched live |
+| **First Contribution** | Gives generic advice ("look for good first issues") | Finds a **real issue in your specific repo**, writes the fix, explains every line |
+| **Persistent Context** | Loses context between questions in a new chat | Holds full repo context across **all three panels** — analysis, code, and chat |
+| **Onboarding Report** | Requires manual prompt engineering per repo | Generates a **structured, exportable Markdown report** automatically |
+| **IBM Bob Integration** | None | Deep — all 4 Bob SDK modes in a single orchestrated pipeline |
+| **Setup Required** | None (but also no repo-specific depth) | None — paste URL, get report |
+
+### The Core Difference
+
+ChatGPT and Copilot are **general-purpose** tools. They answer questions about code you show them. RepoSense is a **purpose-built onboarding engine** — it proactively fetches, parses, and reasons about the entire repository structure so you never have to figure out what to paste or what to ask first.
+
+The analogy: ChatGPT is a knowledgeable friend you can ask anything. RepoSense is a **senior engineer who already read the whole codebase before your first meeting**.
+
+---
+
 ## 🏆 Hackathon Theme Alignment
 
 **Theme: "Turn idea into impact faster"**
