@@ -5,6 +5,7 @@
 *Understand any repository in 2 minutes, not 2 weeks. The first Autonomous Onboarding Engine built on IBM Bob.*
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-0062ff?style=for-the-badge&logo=vercel)](https://reposense-blond.vercel.app)
+[![Watch Demo](https://img.shields.io/badge/Watch-Demo%20Video-ff0000?style=for-the-badge&logo=googledrive)](https://drive.google.com/file/d/1pVsEY-mImaUXM0A3DXjvt_PI44BQnjGG/view?usp=drive_link)
 [![IBM Bob](https://img.shields.io/badge/Built%20With-IBM%20Bob-05a677?style=for-the-badge)](https://github.com/IBM/bob)
 [![Watsonx](https://img.shields.io/badge/Powered%20By-IBM%20Watsonx-be95ff?style=for-the-badge)](https://www.ibm.com/watsonx)
 [![Hackathon](https://img.shields.io/badge/Event-IBM%20Bob%20Hackathon-red?style=for-the-badge)](https://ibm-bob.devpost.com/)
@@ -21,7 +22,7 @@
 
 **RepoSense** isn't just a repository analyzer—it's an **Autonomous Onboarding Engine**. While traditional tools give you a "summary," RepoSense uses **IBM Bob Orchestration** to reconstruct the mental model of a codebase, mapping architectural intent and generating your first contribution instantly.
 
-[**Explore Live**](https://reposense-blond.vercel.app) | [**Read Judges' Note**](#-judges-note-100-bob-built-mvp) | [**Watch Demo**](https://reposense-blond.vercel.app)
+[**Explore Live**](https://reposense-blond.vercel.app) | [**Read Judges' Note**](#-judges-note-100-bob-built-mvp) | [**Watch Demo 🎬**](https://drive.google.com/file/d/1pVsEY-mImaUXM0A3DXjvt_PI44BQnjGG/view?usp=drive_link)
 
 <br/>
 
