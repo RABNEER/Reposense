@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeRepo, askQuestion, kickstartTask, exportMarkdown } from './services/api';
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 const App = () => {
   // ─── STATE ───
   const [appState, setAppState] = useState('hero'); // 'hero' | 'loading' | 'results'
@@ -93,7 +95,7 @@ const App = () => {
 
       const stepInterval = setInterval(() => {
         setCurrentStep(prev => {
-          const next = prev < steps.length ? prev + 1 : prev;
+          const next = prev < steps.length - 1 ? prev + 1 : prev;
           return next;
         });
       }, 1500);
@@ -110,7 +112,11 @@ const App = () => {
           }
           analysisData = data;
           analyzingRef.current = false;
-          // Show results immediately when API call completes
+          
+          // Complete progress bar and checklist
+          setCurrentStep(steps.length);
+          await sleep(500);
+          
           showResults();
         } catch (err) {
           if (!isActive) return;
@@ -197,7 +203,7 @@ const App = () => {
     }
   };
 
-  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  // sleep is defined globally at the top of this file
 
   useEffect(() => {
     if (!codingLoading || shellStarted) return;
@@ -233,9 +239,7 @@ const App = () => {
       for (let i = 0; i < SHELL_SEQUENCE.length; i++) {
         if (shellRunRef.current !== runId) return;
         const line = SHELL_SEQUENCE[i];
-        const isFinalLine = i === SHELL_SEQUENCE.length - 1;
-
-        if (isFinalLine) {
+        if (i === 11) {
           while (!codingResultReadyRef.current && !codingRequestDoneRef.current) {
             if (shellRunRef.current !== runId) return;
             await sleep(150);
@@ -475,7 +479,7 @@ const App = () => {
       100% { width: 0%; }
     }
 
-    .animate-fade-up { animation: fadeUp 600ms ease both; }
+    .animate-fade-up { }
     .stagger-1 { animation-delay: 0ms; }
     .stagger-2 { animation-delay: 100ms; }
     .stagger-3 { animation-delay: 200ms; }
@@ -775,7 +779,8 @@ const App = () => {
             <div className="w-full h-[1px] bg-[var(--border)] relative mb-4 overflow-hidden">
               <div className="absolute top-0 left-0 h-full" style={{
                 background: 'var(--gold)',
-                animation: 'progressLoop 3s ease-in-out infinite'
+                width: `${(currentStep / steps.length) * 100}%`,
+                transition: 'width 400ms ease-out'
               }} />
             </div>
 

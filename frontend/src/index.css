@@ -173,7 +173,6 @@ body::before {
 }
 
 .animate-fade-up {
-  animation: fadeUp 600ms ease both;
 }
 
 .stagger-1 {
