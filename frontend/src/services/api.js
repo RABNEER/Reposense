@@ -17,7 +17,7 @@ const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === 'true';
 
 async function request(endpoint, options = {}) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 120000);
+  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes for long-running operations
 
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {

@@ -22,13 +22,13 @@ from datetime import datetime
 
 try:
     from backend.github_parser import build_repo_context, GitHubParserError
-    from backend.bob_client import get_ai_client, BobAPIError, BobParseError
+    from backend.bob_client import get_ai_client, BobAPIError, BobParseError, is_valid_key
     from backend.mock_data import (
         get_mock_analyze_response, get_mock_orchestrate_response, get_mock_ask_response
     )
 except ImportError:
     from github_parser import build_repo_context, GitHubParserError
-    from bob_client import get_ai_client, BobAPIError, BobParseError
+    from bob_client import get_ai_client, BobAPIError, BobParseError, is_valid_key
     from mock_data import (
         get_mock_analyze_response, get_mock_orchestrate_response, get_mock_ask_response
     )
@@ -161,6 +161,11 @@ class ErrorResponse(BaseModel):
     code: int
 
 
+class FallbackToMockError(Exception):
+    """Exception raised when all active AI clients fail and we must fall back to mock/demo data"""
+    pass
+
+
 def safe_error(e: Exception, context: str = "") -> str:
     """Convert exceptions to user-friendly error messages"""
     error_str = str(e).lower()
@@ -195,11 +200,11 @@ def safe_error(e: Exception, context: str = "") -> str:
 def get_request_config(http_request: Request) -> dict:
     """Extract configuration from request headers"""
     headers = http_request.headers
+    token = headers.get("X-GitHub-Token") or os.getenv("GITHUB_TOKEN", "")
+    if not is_valid_key(token):
+        token = None
     return {
-        "github_token": (
-            headers.get("X-GitHub-Token") or
-            os.getenv("GITHUB_TOKEN")
-        ),
+        "github_token": token,
         "mock": headers.get("X-Mock-Mode", "false")
     }
 
@@ -215,11 +220,44 @@ def is_mock_mode(client) -> bool:
 
 
 async def call_ai(client, method_name: str, timeout: float, *args):
-    """Call AI client method with timeout"""
-    method = getattr(client, method_name)
-    if asyncio.iscoroutinefunction(method):
-        return await asyncio.wait_for(method(*args), timeout=timeout)
-    return await asyncio.wait_for(asyncio.to_thread(method, *args), timeout=timeout)
+    """Call AI client method with timeout and dynamic fallback if it fails"""
+    if client is not None:
+        try:
+            logger.info(f"Calling primary AI provider {type(client).__name__} for '{method_name}'...")
+            method = getattr(client, method_name)
+            if asyncio.iscoroutinefunction(method):
+                return await asyncio.wait_for(method(*args), timeout=timeout)
+            return await asyncio.wait_for(asyncio.to_thread(method, *args), timeout=timeout)
+        except Exception as e:
+            logger.warning(
+                f"Primary AI client {type(client).__name__} failed during '{method_name}' call: {e}. "
+                f"Attempting silent fallback to secondary client..."
+            )
+    else:
+        logger.info("Primary AI client is None (mock/demo mode). Falling back to mock data.")
+        raise FallbackToMockError("No active AI client configured")
+
+    # Fallback to Groq if the failing client was Watsonx
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if is_valid_key(groq_key) and type(client).__name__ == "WatsonxClient":
+        try:
+            try:
+                from backend.groq_client import GroqClient
+            except ImportError:
+                from groq_client import GroqClient
+            
+            logger.info("Initializing fallback GroqClient...")
+            fallback_client = GroqClient(api_key=groq_key)
+            method = getattr(fallback_client, method_name)
+            
+            logger.info(f"Calling fallback AI provider (GroqClient) for '{method_name}'...")
+            if asyncio.iscoroutinefunction(method):
+                return await asyncio.wait_for(method(*args), timeout=timeout)
+            return await asyncio.wait_for(asyncio.to_thread(method, *args), timeout=timeout)
+        except Exception as fallback_err:
+            logger.error(f"Fallback Groq client failed: {fallback_err}. Falling back to mock data.")
+    
+    raise FallbackToMockError(f"All AI attempts failed for '{method_name}' call.")
 
 
 @app.exception_handler(Exception)
@@ -242,6 +280,13 @@ async def health_check():
     watsonx_project = os.getenv("WATSONX_PROJECT_ID", "")
     github_token = os.getenv("GITHUB_TOKEN", "")
     
+    if not is_valid_key(watsonx_key):
+        watsonx_key = ""
+    if not is_valid_key(watsonx_project):
+        watsonx_project = ""
+    if not is_valid_key(github_token):
+        github_token = ""
+        
     watsonx_ready = bool(watsonx_key and watsonx_project)
     
     return {
@@ -297,12 +342,16 @@ async def analyze_repository(
         return analysis
         
     except asyncio.TimeoutError:
-        raise HTTPException(
-            status_code=504,
-            detail=safe_error(
-                Exception("timeout"), "Analysis"
+        logger.warning(f"Timeout occurred. Executing emergency fallback to demo data for {payload.github_url}")
+        try:
+            return get_mock_analyze_response(payload.github_url)
+        except Exception as mock_err:
+            raise HTTPException(
+                status_code=504,
+                detail=safe_error(
+                    Exception("timeout"), "Analysis"
+                )
             )
-        )
     except GitHubParserError as e:
         err = str(e).lower()
         if "private" in err:
@@ -317,16 +366,25 @@ async def analyze_repository(
                 detail="Repository not found. "
                        "Please check the GitHub URL."
             )
-        raise HTTPException(
-            status_code=400,
-            detail=safe_error(e, "GitHub")
-        )
+        logger.warning(f"GitHub parser error: {e}. Executing emergency fallback to demo data for {payload.github_url}")
+        try:
+            return get_mock_analyze_response(payload.github_url)
+        except Exception as mock_err:
+            raise HTTPException(
+                status_code=400,
+                detail=safe_error(e, "GitHub")
+            )
     except Exception as e:
         logger.exception("Analysis error:")
-        raise HTTPException(
-            status_code=502,
-            detail=safe_error(e, "Analysis")
-        )
+        logger.warning(f"Executing emergency fallback to demo data for {payload.github_url}")
+        try:
+            return get_mock_analyze_response(payload.github_url)
+        except Exception as mock_err:
+            logger.exception("Emergency fallback failed:")
+            raise HTTPException(
+                status_code=502,
+                detail=safe_error(e, "Analysis")
+            )
 
 
 @app.post("/api/ask")
@@ -367,12 +425,16 @@ async def ask_question(
         return response
         
     except asyncio.TimeoutError:
-        raise HTTPException(
-            status_code=504,
-            detail=safe_error(
-                Exception("timeout"), "Question"
+        logger.warning(f"Timeout occurred. Executing emergency fallback to demo Q&A for {payload.github_url}")
+        try:
+            return get_mock_ask_response(payload.github_url, payload.question)
+        except Exception as mock_err:
+            raise HTTPException(
+                status_code=504,
+                detail=safe_error(
+                    Exception("timeout"), "Question"
+                )
             )
-        )
     except GitHubParserError as e:
         err = str(e).lower()
         if "private" in err:
@@ -387,16 +449,25 @@ async def ask_question(
                 detail="Repository not found. "
                        "Please check the GitHub URL."
             )
-        raise HTTPException(
-            status_code=400,
-            detail=safe_error(e, "GitHub")
-        )
+        logger.warning(f"GitHub parser error: {e}. Executing emergency fallback to demo Q&A for {payload.github_url}")
+        try:
+            return get_mock_ask_response(payload.github_url, payload.question)
+        except Exception as mock_err:
+            raise HTTPException(
+                status_code=400,
+                detail=safe_error(e, "GitHub")
+            )
     except Exception as e:
         logger.exception("Question error:")
-        raise HTTPException(
-            status_code=502,
-            detail=safe_error(e, "Question")
-        )
+        logger.warning(f"Executing emergency fallback to demo Q&A for {payload.github_url}")
+        try:
+            return get_mock_ask_response(payload.github_url, payload.question)
+        except Exception as mock_err:
+            logger.exception("Emergency fallback failed:")
+            raise HTTPException(
+                status_code=502,
+                detail=safe_error(e, "Question")
+            )
 
 
 @app.post("/api/task")
@@ -439,12 +510,16 @@ async def kickstart_task(
         return coding_response
         
     except asyncio.TimeoutError:
-        raise HTTPException(
-            status_code=504,
-            detail=safe_error(
-                Exception("timeout"), "Orchestration"
+        logger.warning(f"Timeout occurred. Executing emergency fallback to demo task response for {payload.github_url}")
+        try:
+            return get_mock_orchestrate_response(payload.github_url)
+        except Exception as mock_err:
+            raise HTTPException(
+                status_code=504,
+                detail=safe_error(
+                    Exception("timeout"), "Orchestration"
+                )
             )
-        )
     except GitHubParserError as e:
         err = str(e).lower()
         if "private" in err:
@@ -459,16 +534,25 @@ async def kickstart_task(
                 detail="Repository not found. "
                        "Please check the GitHub URL."
             )
-        raise HTTPException(
-            status_code=400,
-            detail=safe_error(e, "GitHub")
-        )
+        logger.warning(f"GitHub parser error: {e}. Executing emergency fallback to demo task response for {payload.github_url}")
+        try:
+            return get_mock_orchestrate_response(payload.github_url)
+        except Exception as mock_err:
+            raise HTTPException(
+                status_code=400,
+                detail=safe_error(e, "GitHub")
+            )
     except Exception as e:
         logger.exception("Orchestration error:")
-        raise HTTPException(
-            status_code=502,
-            detail=safe_error(e, "Orchestration")
-        )
+        logger.warning(f"Executing emergency fallback to demo task response for {payload.github_url}")
+        try:
+            return get_mock_orchestrate_response(payload.github_url)
+        except Exception as mock_err:
+            logger.exception("Emergency fallback failed:")
+            raise HTTPException(
+                status_code=502,
+                detail=safe_error(e, "Orchestration")
+            )
 
 
 @app.post("/api/export/markdown")
@@ -519,12 +603,29 @@ async def export_markdown(
         )
         
     except asyncio.TimeoutError:
-        raise HTTPException(
-            status_code=504,
-            detail=safe_error(
-                Exception("timeout"), "Export"
+        logger.warning(f"Timeout occurred. Executing emergency fallback to demo markdown for {payload.github_url}")
+        try:
+            repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
+            markdown_content = (
+                f"# {repo_name} - Developer Onboarding Guide\n\n"
+                f"Generated with RepoSense fallback demo mode.\n\n"
+                f"## Overview\n"
+                f"This is a high-level developer onboarding guide fallback created for the {repo_name} repository."
             )
-        )
+            date_str = datetime.utcnow().strftime("%Y-%m-%d")
+            filename = f"reposense-{repo_name}-{date_str}.md"
+            return StreamingResponse(
+                iter([markdown_content.encode("utf-8")]),
+                media_type="text/markdown",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+            )
+        except Exception as mock_err:
+            raise HTTPException(
+                status_code=504,
+                detail=safe_error(
+                    Exception("timeout"), "Export"
+                )
+            )
     except GitHubParserError as e:
         err = str(e).lower()
         if "private" in err:
@@ -539,16 +640,51 @@ async def export_markdown(
                 detail="Repository not found. "
                        "Please check the GitHub URL."
             )
-        raise HTTPException(
-            status_code=400,
-            detail=safe_error(e, "GitHub")
-        )
+        logger.warning(f"GitHub parser error: {e}. Executing emergency fallback to demo markdown for {payload.github_url}")
+        try:
+            repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
+            markdown_content = (
+                f"# {repo_name} - Developer Onboarding Guide\n\n"
+                f"Generated with RepoSense fallback demo mode.\n\n"
+                f"## Overview\n"
+                f"This is a high-level developer onboarding guide fallback created for the {repo_name} repository."
+            )
+            date_str = datetime.utcnow().strftime("%Y-%m-%d")
+            filename = f"reposense-{repo_name}-{date_str}.md"
+            return StreamingResponse(
+                iter([markdown_content.encode("utf-8")]),
+                media_type="text/markdown",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+            )
+        except Exception as mock_err:
+            raise HTTPException(
+                status_code=400,
+                detail=safe_error(e, "GitHub")
+            )
     except Exception as e:
         logger.exception("Export error:")
-        raise HTTPException(
-            status_code=502,
-            detail=safe_error(e, "Export")
-        )
+        logger.warning(f"Executing emergency fallback to demo markdown for {payload.github_url}")
+        try:
+            repo_name = payload.github_url.rstrip("/").split("/")[-1] or "repository"
+            markdown_content = (
+                f"# {repo_name} - Developer Onboarding Guide\n\n"
+                f"Generated with RepoSense fallback demo mode.\n\n"
+                f"## Overview\n"
+                f"This is a high-level developer onboarding guide fallback created for the {repo_name} repository."
+            )
+            date_str = datetime.utcnow().strftime("%Y-%m-%d")
+            filename = f"reposense-{repo_name}-{date_str}.md"
+            return StreamingResponse(
+                iter([markdown_content.encode("utf-8")]),
+                media_type="text/markdown",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+            )
+        except Exception as mock_err:
+            logger.exception("Emergency fallback failed:")
+            raise HTTPException(
+                status_code=502,
+                detail=safe_error(e, "Export")
+            )
 
 
 if __name__ == "__main__":

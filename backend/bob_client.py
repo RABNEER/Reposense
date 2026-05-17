@@ -14,10 +14,29 @@ load_dotenv(dotenv_path=env_path)
 
 logger = logging.getLogger(__name__)
 
+def is_valid_key(key: str) -> bool:
+    """Check if a key is provided and is not a placeholder value"""
+    if not key:
+        return False
+    key_lower = key.strip().lower()
+    placeholders = ["your_", "placeholder", "api_key", "token", "project_id"]
+    return not any(p in key_lower for p in placeholders)
+
+
 WATSONX_API_KEY = os.getenv("WATSONX_API_KEY", "")
+if not is_valid_key(WATSONX_API_KEY):
+    WATSONX_API_KEY = ""
+
 WATSONX_PROJECT_ID = os.getenv("WATSONX_PROJECT_ID", "")
+if not is_valid_key(WATSONX_PROJECT_ID):
+    WATSONX_PROJECT_ID = ""
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+if not is_valid_key(GROQ_API_KEY):
+    GROQ_API_KEY = ""
+
 MOCK_MODE = not bool(WATSONX_API_KEY or GROQ_API_KEY)
+
 
 
 class BobAPIError(Exception):
