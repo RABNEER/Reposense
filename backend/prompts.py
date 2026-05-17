@@ -17,11 +17,11 @@ def format_file_tree(file_tree):
             result.append(str(f))
     return '\n'.join(result)
 
-def format_key_files(key_files: dict, max_chars: int = 500) -> str:
-    """Format key file contents for prompt"""
+def format_key_files(key_files: dict, max_chars: int = 400) -> str:
+    """Format key file contents for prompt - optimized for speed"""
     formatted = []
-    for filepath, content in list(key_files.items())[:15]:
-        truncated = content[:max_chars]
+    for filepath, content in list(key_files.items())[:10]:  # Reduced from 15 to 10
+        truncated = content[:max_chars]  # Reduced from 500 to 400
         if len(content) > max_chars:
             truncated += "\n... (truncated)"
         formatted.append(f"\n=== {filepath} ===\n{truncated}\n")
@@ -33,23 +33,22 @@ def build_analysis_prompt(repo_context: dict) -> str:
     file_tree_str = format_file_tree(repo_context.get('file_tree', []))
     key_files_str = format_key_files(repo_context.get('key_files', {}))
     
-    prompt = f"""Analyze this GitHub repository and provide a complete onboarding analysis.
+    prompt = f"""Analyze this repository quickly and provide a concise onboarding analysis.
 
 Repository: {repo_context.get('owner', 'unknown')}/{repo_context.get('repo_name', repo_context.get('owner', 'unknown') + '/' + repo_context.get('name', 'repo'))}
 Description: {repo_context.get('metadata', {}).get('description', 'No description')}
-Primary Language: {repo_context.get('metadata', {}).get('language', 'Unknown')}
-Stars: {repo_context.get('metadata', {}).get('stars', 0)}
-Total Files: {repo_context.get('total_files', len(repo_context.get('file_tree', [])))}
+Language: {repo_context.get('metadata', {}).get('language', 'Unknown')}
+Files: {repo_context.get('total_files', len(repo_context.get('file_tree', [])))}
 
-FILE TREE (first 100 files):
+FILE TREE (first 50):
 {file_tree_str}
 
-KEY FILE CONTENTS:
+KEY FILES:
 {key_files_str}
 
-IMPORTANT: Use ONLY file paths that exist in the file tree above. Do not invent file paths.
+IMPORTANT: Be concise. Use ONLY real file paths from above.
 
-Respond with a JSON object with these exact fields:
+Respond with JSON:
 
 {{
   "project_name": "string",
@@ -70,10 +69,10 @@ Respond with a JSON object with these exact fields:
     {{"step": "string", "description": "string"}}
   ],
   "onboarding_steps": [
-    {{"step": number, "action": "string", "why": "string", "code_ref": "string (file path)"}}
+    {{"step": number, "action": "string", "why": "string"}}
   ],
   "quick_wins": [
-    {{"title": "string", "description": "string", "files": ["string"], "complexity": "Low|Medium|High", "impact": "Low|Medium|High"}}
+    {{"title": "string", "description": "string", "complexity": "Low|Medium|High"}}
   ],
   "gotchas": ["string"],
   "estimated_onboarding_minutes": number,
@@ -83,7 +82,7 @@ Respond with a JSON object with these exact fields:
   "complexity": "Low|Medium|High"
 }}
 
-Provide complete, realistic data. No placeholders. No empty arrays."""
+Be concise. No placeholders."""
     
     return prompt
 

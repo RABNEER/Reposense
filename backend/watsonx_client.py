@@ -109,7 +109,7 @@ class WatsonxClient:
             try:
                 token = await self._get_iam_token()
                 
-                async with httpx.AsyncClient(timeout=120.0) as client:
+                async with httpx.AsyncClient(timeout=90.0) as client:  # Reduced from 120s
                     response = await client.post(
                         f"{WATSONX_BASE_URL}/ml/v1/text/generation"
                         f"?version=2023-05-29",
@@ -123,9 +123,9 @@ class WatsonxClient:
                             "input": full_content,
                             "parameters": {
                                 "decoding_method": "greedy",
-                                "max_new_tokens": 4096,
-                                "temperature": 0.1,
-                                "repetition_penalty": 1.1
+                                "max_new_tokens": 2048,  # Reduced from 4096 for faster generation
+                                "temperature": 0.05,  # Lower for faster, more focused responses
+                                "repetition_penalty": 1.05  # Reduced for speed
                             },
                             "project_id": self.project_id
                         }

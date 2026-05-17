@@ -185,7 +185,7 @@ def fetch_file_tree(owner: str, repo: str, branch: str, token: Optional[str] = N
                     "type": "blob"
                 })
         
-        filtered_files = filtered_files[:500]
+        filtered_files = filtered_files[:300]  # Reduced from 500 for faster processing
         
         logger.info(f"Filtered {len(filtered_files)} files from {len(tree)} total")
         return filtered_files
@@ -275,7 +275,7 @@ def select_priority_files(file_tree: list) -> list:
                 files_to_fetch.append(path)
                 break
     
-    files_to_fetch = list(dict.fromkeys(files_to_fetch))[:40]
+    files_to_fetch = list(dict.fromkeys(files_to_fetch))[:15]  # Reduced from 40 for faster analysis
     return files_to_fetch
 
 
