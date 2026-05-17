@@ -73,13 +73,11 @@ const App = () => {
   useEffect(() => {
     if (appState === 'loading') {
       let isActive = true;
-      let loadingSequenceDone = false;
       let analysisData = null;
       let analysisElapsed = null;
 
-      const maybeShowResults = () => {
-        if (!isActive) return;
-        if (!loadingSequenceDone || !analysisData) return;
+      const showResults = () => {
+        if (!isActive || !analysisData) return;
 
         if (analysisElapsed) {
           setElapsedTime(analysisElapsed);
@@ -96,10 +94,6 @@ const App = () => {
       const stepInterval = setInterval(() => {
         setCurrentStep(prev => {
           const next = prev < steps.length ? prev + 1 : prev;
-          if (next >= steps.length) {
-            loadingSequenceDone = true;
-            maybeShowResults();
-          }
           return next;
         });
       }, 1500);
@@ -116,7 +110,8 @@ const App = () => {
           }
           analysisData = data;
           analyzingRef.current = false;
-          maybeShowResults();
+          // Show results immediately when API call completes
+          showResults();
         } catch (err) {
           if (!isActive) return;
           const errMsg = err.message || 'Analysis failed';

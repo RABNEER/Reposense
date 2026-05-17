@@ -1,4 +1,4 @@
-# RepoSense Docker Compose Configuration
+# RepoSense Docker Compose Configuration (Updated)
 version: '3.8'
 
 services:

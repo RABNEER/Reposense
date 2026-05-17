@@ -1,6 +1,6 @@
 # RepoSense Architecture Documentation 🏗️
 
-This document provides a comprehensive overview of RepoSense's architecture, design decisions, and technical implementation.
+This document provides a comprehensive overview of RepoSense's architecture, design decisions, and technical implementation. (Updated for Hackathon Submissions)
 
 ## Table of Contents
 

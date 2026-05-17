@@ -1,6 +1,6 @@
 # Contributing to RepoSense 🤝
 
-Thank you for your interest in contributing to RepoSense! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to RepoSense! This document provides guidelines and instructions for contributing. (Updated for Developers)
 
 ## Table of Contents
 

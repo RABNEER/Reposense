@@ -41,6 +41,16 @@
 > *   **Self-Healing**: Bob identified and fixed his own network connectivity issues during development.
 > *   **Architecture-as-Code**: Bob designed the multi-model fallback system to ensure a 100% uptime experience.
 > *   **Impact**: Built a fully functional enterprise-grade tool in **hours**, typically a **multi-week** effort for a senior team.
+> 
+> **IBM Bob Session Reports Added:** Bob IDE task session reports are available in [`bob_sessions/`](./bob_sessions/) as required by the hackathon submission guidelines.
+
+---
+
+## 🤖 IBM Bob Session Reports
+
+Bob IDE task session reports are available in
+[`bob_sessions/`](./bob_sessions/) as required
+by the hackathon submission guidelines.
 
 ---
 
@@ -476,14 +486,6 @@ RepoSense embodies this by:
 - ✅ Rate limit handling with IBM-branded messages
 - ✅ Concurrent request handling
 - ✅ Graceful error fallbacks
-
----
-
-## 🤖 IBM Bob Session Reports
-
-Bob IDE task session reports are available in
-[`bob_sessions/`](./bob_sessions/) as required
-by the hackathon submission guidelines.
 
 ---
 
