@@ -127,6 +127,8 @@ const App = () => {
 
           if (errMsg.toLowerCase().includes('not found')) {
             setToast({ message: 'Repository not found', type: 'error' });
+          } else if (errMsg.toLowerCase().includes('high demand') || errMsg.toLowerCase().includes('rate limit')) {
+            setToast({ message: '⏳ IBM Bob is experiencing high demand. Please try again in a moment.', type: 'error' });
           } else {
             setToast({ message: errMsg, type: 'error' });
           }
